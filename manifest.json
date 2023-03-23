@@ -8,22 +8,16 @@
     "homepage_url": "https://github.com/kurozora/kurozora-extension",
     "name": "Kurozora — Anime/Manga/Game",
     "short_name": "Kurozora",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Search Kurozora for anime, manga, games, characters, voice actors, songs, studios and more!",
     "icons": {
         "48": "images/icon.webp",
         "96": "images/icon@2x.webp"
     },
     "permissions": [
-        "activeTab",
         "search"
     ],
-    "content_scripts": [{
-        "matches": ["*://kurozora.app/*"],
-        "js": ["search.js"]
-    }],
     "chrome_settings_overrides": {
-        "homepage": "https://kurozora.app/search",
         "search_provider": {
             "name": "Kurozora",
             "search_url": "https://kurozora.app/search?q={searchTerms}",
