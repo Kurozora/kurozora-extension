@@ -1,17 +1,12 @@
-<p align="center"><img src=".github/Assets/Kurozora.webp"></p>
+<p align="center"><img src=".github/Assets/Kurozora.png"></p>
 
 <p align="center">
     <sup><em>The Ultimate Search Engine for Anime, Manga and Game Fans</em></sup>
 </p>
 
-[![Mozilla Rating](https://img.shields.io/amo/stars/kurozora?color=orange&label=Firefox%20Rating&logo=firefox)](https://addons.mozilla.org/en-US/firefox/addon/kurozora/)
-[![Mozilla Downloads](https://img.shields.io/amo/users/kurozora?color=orange&label=Firefox%20Users&logo=firefox)](https://addons.mozilla.org/en-US/firefox/addon/kurozora/)
-[![Discord](https://img.shields.io/discord/449250093623934977?style=flat&label=Discord&logo=Discord&color=7289DA)](https://discord.gg/f3QFzGqsah)
-[![License](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat)](https://github.com/Anarios/return-youtube-dislike/blob/main/LICENSE)
+# Kurozora Web Extension [![Mozilla Add-On](https://img.shields.io/badge/Mozilla%20Add--On-%23331e54?label=%20&logo=Firefox)](https://addons.mozilla.org/en-US/firefox/addon/kurozora) [![Kurozora Discord Server](https://img.shields.io/discord/449250093623934977?style=flat&label=&logo=Discord&logoColor=white&color=7289DA)](https://discord.gg/f3QFzGqsah) [![License](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat)](https://github.com/Anarios/return-youtube-dislike/blob/main/LICENSE)
 
 [Kurozora](https://kurozora.app) is your go-to platform **discovering**, **sharing** and **tracking** anime and much more! The Kurozora extension is a fast and easy-to-use search engine designed specifically for anime, manga and game fans. Whether you're looking for information about a specific episode, character, voice actor, staff member, song, or studio, Kurozora has got you covered.
-
-# Features
 
 - 🔎 Search for anime, manga, games, episodes, characters, voice actors, staff, songs, studios, and more anime-related content.
 - 🎯 Get accurate and relevant results for all of your anime-related searches.
