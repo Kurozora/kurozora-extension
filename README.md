@@ -1,12 +1,14 @@
-<p align="center"><img src=".github/Assets/Kurozora.png"></p>
+<p align="center"><img src=".github/Assets/Kurozora.png" width="256px"></p>
 
 <p align="center">
     <sup><em>The Ultimate Search Engine for Anime, Manga and Game Fans</em></sup>
 </p>
 
-# Kurozora Web Extension [![Mozilla Add-On](https://img.shields.io/badge/Mozilla%20Add--On-%23331e54?label=%20&logo=Firefox)](https://addons.mozilla.org/en-US/firefox/addon/kurozora) [![Kurozora Discord Server](https://img.shields.io/discord/449250093623934977?style=flat&label=&logo=Discord&logoColor=white&color=7289DA)](https://discord.gg/f3QFzGqsah) [![License](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat)](https://github.com/Anarios/return-youtube-dislike/blob/main/LICENSE)
+# Kurozora Web Extension [![Mozilla Add-On](https://img.shields.io/badge/Mozilla%20Add--On-%23331e54?label=%20&logo=Firefox)](https://addons.mozilla.org/en-US/firefox/addon/kurozora) [![Kurozora Discord Server](https://img.shields.io/discord/449250093623934977?style=flat&label=&logo=Discord&logoColor=white&color=7289DA)](https://discord.gg/f3QFzGqsah) [![License](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat)](LICENSE)
 
-[Kurozora](https://kurozora.app) is your go-to platform **discovering**, **sharing** and **tracking** anime and much more! The Kurozora extension is a fast and easy-to-use search engine designed specifically for anime, manga and game fans. Whether you're looking for information about a specific episode, character, voice actor, staff member, song, or studio, Kurozora has got you covered.
+[Kurozora](https://kurozora.app) is your one-stop shop for everything anime!
+
+The Kurozora extension is a fast and easy-to-use search engine designed specifically for anime, manga and game fans. Whether you're looking for information about a specific episode, character, voice actor, staff member, song, or studio, Kurozora has got you covered.
 
 - 🔎 Search for anime, manga, games, episodes, characters, voice actors, staff, songs, studios, and more anime-related content.
 - 🎯 Get accurate and relevant results for all of your anime-related searches.
@@ -45,11 +47,12 @@ If you have any questions or just want to say hi, join the Kurozora [Discord](ht
 
 # More by Kurozora
 
-- [Kurozora Web](https://github.com/kurozora/kurozora-web) — Home to the Kurozora website and API.
-- [Kurozora iOS App](https://github.com/kurozora/kurozora-app) — iOS/iPadOS/MacOS client app.
-- [Kurozora Discord Bot](https://github.com/kurozora/kurozora-discord-bot) — A versatile Discord bot with access to Kurozora services.
-- [Kurozora Android App](https://github.com/kurozora/kurozora-android) — Android client app.
+- [Kurozora Android App](https://github.com/kurozora/kurozora-android) — Android client app
+- [Kurozora Discord Bot](https://github.com/kurozora/kurozora-discord-bot) — A versatile Discord bot with access to Kurozora services
+- [Kurozora iOS App](https://github.com/kurozora/kurozora-app) — iOS/iPadOS/MacOS client app
 - [KurozoraKit](https://github.com/kurozora/KurozoraKit) — Simple to use framework for interacting with the Kurozora API
+- [Kurozora Linux App](https://github.com/kurozora/kurozora-linux) — Linux client app
+- [Kurozora Web](https://github.com/kurozora/kurozora-web) — Home to the Kurozora website and API
 
 # License
 
