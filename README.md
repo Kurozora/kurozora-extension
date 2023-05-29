@@ -1,4 +1,6 @@
-<p align="center"><img src=".github/Assets/Kurozora.png" width="256px"></p>
+<p></p>
+
+<p align="center"><img src=".github/Assets/Kurozora.png" width="200px"></p>
 
 <p align="center">
     <sup><em>The Ultimate Search Engine for Anime, Manga and Game Fans</em></sup>
