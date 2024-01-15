@@ -14,8 +14,27 @@
         "48": "images/icon.webp",
         "96": "images/icon@2x.webp"
     },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "48": "images/icon.webp",
+            "96": "images/icon@2x.webp"
+        }
+    },
+    "background": {
+        "scripts": ["background.js"],
+        "service_worker": "background.js"
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self';"
+    },
     "permissions": [
+        "activeTab",
+        "storage",
         "search"
+    ],
+    "host_permissions": [
+        "https://*.kurozora.app/"
     ],
     "chrome_settings_overrides": {
         "search_provider": {
