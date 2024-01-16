@@ -1,0 +1,19 @@
+{
+    "name": "kurozora-extension",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build"
+    },
+    "devDependencies": {
+        "@tailwindcss/forms": "^0.5.7",
+        "autoprefixer": "^10.4.16",
+        "postcss": "^8.4.33",
+        "tailwindcss": "^3.4.1",
+        "vite": "^5.0.0",
+        "vite-plugin-web-extension": "^4.0.0",
+        "webextension-polyfill": "^0.10.0"
+    }
+}

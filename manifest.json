@@ -11,19 +11,19 @@
     "version": "1.0.1",
     "description": "Search Kurozora for anime, manga, games, characters, voice actors, songs, studios and more!",
     "icons": {
-        "48": "images/icon.webp",
-        "96": "images/icon@2x.webp"
+        "48": "/img/icon.webp",
+        "96": "/img/icon@2x.webp"
     },
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
-            "48": "images/icon.webp",
-            "96": "images/icon@2x.webp"
+            "48": "/img/icon.webp",
+            "96": "/img/icon@2x.webp"
         }
     },
     "background": {
-        "scripts": ["background.js"],
-        "service_worker": "background.js"
+        "{{chrome}}.service_worker": "background.js",
+        "{{firefox}}.scripts": ["background.js"]
     },
     "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'self';"
@@ -40,7 +40,7 @@
         "search_provider": {
             "name": "Kurozora",
             "search_url": "https://kurozora.app/search?q={searchTerms}",
-            "alternate_urls": [
+            "{{chrome}}.alternate_urls": [
                 "https://kurozora.app/search?q={searchTerms}&type=literatures",
                 "https://kurozora.app/search?q={searchTerms}&type=games",
                 "https://kurozora.app/search?q={searchTerms}&type=episodes",
@@ -54,13 +54,13 @@
                 "https://kurozora.app/search?q={searchTerms}&scope=library&type=games"
             ],
             "keyword": "k",
-            "favicon_url": "/images/favicon.ico"
+            "favicon_url": "/img/favicon.ico"
         }
     },
     "browser_specific_settings": {
         "gecko": {
-          "id": "{84BCDD02-DB50-4C24-9037-7008F4C848F5}",
-          "strict_min_version": "109.0"
+            "id": "{84BCDD02-DB50-4C24-9037-7008F4C848F5}",
+            "strict_min_version": "109.0"
         }
     }
 }

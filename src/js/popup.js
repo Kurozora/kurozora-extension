@@ -1,10 +1,12 @@
+import browser from "webextension-polyfill";
+
 async function submitForm() {
-    // Get username and password values
-    const username = document.getElementById("username").value;
+    // Get email and password values
+    const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
     // Send a message to the background script to initiate the signIn function
-    browser.runtime.sendMessage({ action: "signIn", username: username, password: password });
+    browser.runtime.sendMessage({ action: "signIn", email: email, password: password });
 }
 
 // Listen for the response from the background script
