@@ -17,44 +17,5 @@
         <script type="module" src="./src/js/popup.js"></script>
     </head>
 
-    <body>
-        <div class="flex flex-col justify-center w-screen h-full max-w-prose mx-auto pl-4 pr-4 py-6 sm:px-6">
-            <section>
-                <div class="text-center mb-5">
-                    <h1 class="text-2xl font-bold">Welcome to Kurozora!</h1>
-                    <p>Sign in with your Kurozora ID to use the library and other Kurozora services.</p>
-                </div>
-            </section>
-
-            <section>
-                <form id="loginForm">
-                    <section class="flex flex-col gap-4">
-                        <div>
-                            <label class="block font-medium text-sm text-gray-700" for="email">Kurozora ID</label>
-                            <input id="email" class="form-input mt-1 w-full rounded-md shadow-sm focus:border-orange-500 focus:ring-orange-500" type="email" name="email" placeholder="The cool Kurozora ID you claimed 🙌" required autofocus />
-                        </div>
-
-                        <div>
-                            <label class="block font-medium text-sm text-gray-700" for="password">Password</label>
-                            <input id="password" class="form-input mt-1 w-full rounded-md shadow-sm focus:border-orange-500 focus:ring-orange-500" type="password" name="password" placeholder="Your super secret password 👀" required autocomplete="current-password" />
-                        </div>
-
-                        <section class="flex flex-col items-center justify-end gap-4 mt-8 text-center">
-                            <button id="loginButton" class="inline-flex items-center justify-center pl-2 pr-2 pt-1 pb-1 bg-orange-500 border border-transparent rounded-md text-xs text-white font-semibold uppercase tracking-widest transition ease-in-out duration-150 hover:bg-orange-400 active:bg-orange-600 focus:outline-none active:border-orange-600 active:ring-orange disabled:bg-gray-200 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-default sm:px-4 sm:py-2" type="button">OPEN SESAME 👐</button>
-                        </section>
-                    </section>
-                </form>
-
-                <div class="flex flex-col items-center justify-end gap-4 mt-4 text-center">
-                    <p class="tracking-wide font-black">———— or ————</p>
-
-                    <a class="inline-flex items-center text-orange-700 text-sm font-medium underline transition ease-in-out duration-150 hover:text-orange-500 disabled:opacity-25" href="#">New to Kurozora? Join us 🔥</a>
-                </div>
-            </section>
-
-            <section>
-                <code id="authToken">Token: N/A</code>
-            </section>
-        </div>
-    </body>
+    <body id="app"></body>
 </html>
