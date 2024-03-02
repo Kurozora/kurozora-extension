@@ -10,6 +10,7 @@ export default {
 
   content: [
     './popup.html',
+    './public/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue}',
     './src/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue}'
   ],
 
