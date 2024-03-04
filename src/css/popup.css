@@ -32,8 +32,7 @@ input:invalid, textarea:invalid, select:invalid {
 /* Global styles */
 html, body {
     @apply scroll-smooth;
-
-    width: 380px;
+    width: 400px;
     height: 600px;
     padding: 0;
     margin: 0;
@@ -123,3 +122,78 @@ img:not([src]):not([srcset]) {
  * config file.
  */
 @tailwind variants;
+
+
+#searchPage{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px 0 10px;
+}
+
+#searchText{
+    position: relative;
+    font-weight: bold;
+    font-size: 25px;
+    top: 20px;
+}
+
+#search{
+    width: 350px;
+    position: absolute;
+    outline: none;
+    top: 70px;
+    border: 1px solid black;
+    border-radius: 10px;
+}
+
+#search:focus{
+    position: absolute;
+    outline: none;
+    border: 1px solid orange;
+    border-radius: 10px;
+    top: 70px;
+}
+
+#searchData{
+    display: grid;
+    grid-template-columns: auto;
+    gap: 10px;
+    position: relative;
+    top: 50px;
+}
+
+#animeContainer{
+    position: relative;
+    display: grid;
+    grid-template-columns: auto auto;
+    width: 380px;
+    height: 200px;
+    padding: 10px;
+}
+
+#animePoster{
+    position: absolute;
+    width: 100px;
+    border-radius: 10px;
+}
+
+#animeDetails{
+    max-width: 180px;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+    left: 125px;
+    vertical-align: top;
+}
+
+#animeTitle{
+    font-size: 15px;
+}
+
+#animeGenre{
+    font-size: 10px;
+}
