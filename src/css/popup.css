@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
 /**
  * This injects Tailwind's base styles, which is a combination of
  * Normalize.css and some additional base styles.
@@ -30,6 +31,8 @@ input:invalid, textarea:invalid, select:invalid {
  */
 
 /* Global styles */
+
+
 html, body {
     @apply scroll-smooth;
     width: 400px;
@@ -165,7 +168,7 @@ img:not([src]):not([srcset]) {
     top: 50px;
 }
 
-#animeContainer{
+#container{
     position: relative;
     display: grid;
     grid-template-columns: auto auto;
@@ -174,13 +177,13 @@ img:not([src]):not([srcset]) {
     padding: 10px;
 }
 
-#animePoster{
+#poster{
     position: absolute;
     width: 100px;
     border-radius: 10px;
 }
 
-#animeDetails{
+#details{
     max-width: 180px;
     position: absolute;
     display: flex;
@@ -190,10 +193,11 @@ img:not([src]):not([srcset]) {
     vertical-align: top;
 }
 
-#animeTitle{
+#title{
     font-size: 15px;
+    font-family: 'Roboto';
 }
 
-#animeGenre{
+#genre{
     font-size: 10px;
 }
