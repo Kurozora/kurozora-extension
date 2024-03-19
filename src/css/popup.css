@@ -1,9 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
 /**
  * This injects Tailwind's base styles, which is a combination of
  * Normalize.css and some additional base styles.
  */
 @tailwind base;
+
+html, body {
+    @apply scroll-smooth;
+    width: 400px;
+    height: 600px;
+    padding: 0;
+    margin: 0;
+}
+
+::selection {
+    @apply text-white
+    bg-orange-500;
+}
 
 /**
  * Remove the default box-shadow for invalid elements to prevent
@@ -31,16 +43,6 @@ input:invalid, textarea:invalid, select:invalid {
  */
 
 /* Global styles */
-
-
-html, body {
-    @apply scroll-smooth;
-    width: 400px;
-    height: 600px;
-    padding: 0;
-    margin: 0;
-}
-
 ul, ol {
     margin: 1em 0 1em 1.1em;
 }
@@ -125,79 +127,3 @@ img:not([src]):not([srcset]) {
  * config file.
  */
 @tailwind variants;
-
-
-#searchPage{
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0 10px 0 10px;
-}
-
-#searchText{
-    position: relative;
-    font-weight: bold;
-    font-size: 25px;
-    top: 20px;
-}
-
-#search{
-    width: 350px;
-    position: absolute;
-    outline: none;
-    top: 70px;
-    border: 1px solid black;
-    border-radius: 10px;
-}
-
-#search:focus{
-    position: absolute;
-    outline: none;
-    border: 1px solid orange;
-    border-radius: 10px;
-    top: 70px;
-}
-
-#searchData{
-    display: grid;
-    grid-template-columns: auto;
-    gap: 10px;
-    position: relative;
-    top: 50px;
-}
-
-#container{
-    position: relative;
-    display: grid;
-    grid-template-columns: auto auto;
-    width: 380px;
-    height: 200px;
-    padding: 10px;
-}
-
-#poster{
-    position: absolute;
-    width: 100px;
-    border-radius: 10px;
-}
-
-#details{
-    max-width: 180px;
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    row-gap: 10px;
-    left: 125px;
-    vertical-align: top;
-}
-
-#title{
-    font-size: 15px;
-    font-family: 'Roboto';
-}
-
-#genre{
-    font-size: 10px;
-}
