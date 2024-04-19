@@ -1,5 +1,6 @@
 import browser from 'webextension-polyfill'
 let selectedType = "";
+let result;
 document.addEventListener('DOMContentLoaded', function() {
     loadApp()
 })
@@ -87,68 +88,78 @@ function configureSearchTypes() {
                 const ans = await res2.json()
 
                 //
-                for(let i = 0; i < ans.data[selectedType].data.length; i++){
+                ans.data[selectedType].data.forEach(async(search)=> {
                     const container = document.createElement('div')
                     container.id = 'container'
-                    const anime = ans.data[selectedType].data[i].href;
-                    const name = await fetch('https://api.kurozora.app' + anime)
-                    const result = await name.json()
-
+                    
                     //just the basic information that is created for each data
                     const details = document.createElement('div')
                     details.id = 'details'
                     const poster = document.createElement('img')
+                    
                     poster.id = 'poster'
                     const title = document.createElement('p')
                     title.id = 'title'
                     const genre = document.createElement('p')
                     genre.id = 'genre'
 
-                    //conditional statements for the individual search processes 
+                    const href = search.href;
+                    const name = await fetch('https://api.kurozora.app' + href) //getting the indivdual search data
+                    const item = await name.json();
+
+                     //conditional statements for the individual search processes 
                     //might be removed if a better solution is implemented
                     if(selectedType == 'characters'){
-                        poster.src = result.data[0].attributes.profile.url
+                        poster.src = item.data[0].attributes.profile.url
                         container.appendChild(poster)
-                        title.textContent = result.data[0].attributes.name
+                        title.textContent = item.data[0].attributes.name
                         details.appendChild(title)
-                        console.log("CHARACTER")
                     } else if(selectedType == `studios`){
-                        poster.src = result.data[0].attributes.banner.url
+                        poster.src = item.data[0].attributes.banner.url
                         container.appendChild(poster)
-                        title.textContent = result.data[0].attributes.name
+                        title.textContent = item.data[0].attributes.name
                         details.appendChild(title)
-                        console.log("STUDIO")
-                    } else if(selectedType == 'shows' || selectedType == 'games' || selectedType == 'literature'){
-                        poster.src = result.data[0].attributes.poster.url
-                        title.textContent = result.data[0].attributes.title
-                        genre.textContent = result.data[0].attributes.genres
+                    }  else if(selectedType == `episodes`){
+                        poster.src = item.data[0].attributes.poster.url
+                        container.appendChild(poster)
+                        title.textContent = item.data[0].attributes.title
+                        details.appendChild(title)
+                    }
+                    else if(selectedType == 'shows' || selectedType == 'games' || selectedType == 'literature'){
+                        poster.src = item.data[0].attributes.poster.url
+                        title.textContent = item.data[0].attributes.title
+                        genre.textContent = item.data[0].attributes.genres
                         details.appendChild(title)
                         details.appendChild(genre)
                         container.appendChild(poster)
-                        console.log('ANIME GAME AND MANGA')
                     } else if(selectedType == 'users'){
-                        poster.src = result.data[0].attributes.profile.url
+                        poster.src = item.data[0].attributes.profile.url
                         details.appendChild(title)
                         container.appendChild(poster)
-                        title.textContent = result.data[0].attributes.username
+                        title.textContent = item.data[0].attributes.username
                         details.appendChild(title)
-                        console.log('USER')
                     } else if(selectedType == 'people'){
-                        title.textContent = result.data[0].attributes.fullName
-                        poster.src = result.data[0].attributes.profile.url
+                        title.textContent = item.data[0].attributes.fullName
+                        poster.src = item.data[0].attributes.profile.url
                         details.appendChild(title)
                         container.appendChild(poster)
                     } else if(selectedType == 'songs'){
-                        title.innerHTML = result.data[0].attributes.title
+                        title.innerHTML = item.data[0].attributes.title
+                        genre.innerHTML = item.data[0].attributes.artist
+                        details.appendChild(title)
+                        details.appendChild(genre)
                     }
                     container.appendChild(details)
-
+                    
+                    poster.addEventListener('click', () => landingPage(item.data[0]))
                     //appending all to the main HTML
                     document.getElementById('searchData').appendChild(container)
-                }
+                })
             }
         })
     }
+
+    
 
 function toggleSearchType(type) {
     selectedType = type //assigning selectedType to the name of the id
@@ -157,8 +168,6 @@ function toggleSearchType(type) {
             if (button.id === `types[]=${type}`) {
                 button.classList.add('bg-orange-500')
                 button.classList.add('text-white')
-                console.log(button.id)
-
                 
             } else{
                 button.classList.add('text-orange-500')
@@ -170,32 +179,47 @@ function toggleSearchType(type) {
     )
 }
 
-/*
-
-//switch between dark mode and light mode
-function modeSwitch(){
-    let click = 0;
-document.getElementById('mode').addEventListener('click', ()=>{
-
-    if(document.getElementById('searchPage').style.backgroundColor = 'white'){
-        click = 0
+async function landingPage(item){
+    const res =  await fetch(`views/${selectedType}/landing.html`)
+    document.getElementById('app').innerHTML = await res.text()
+    const landingContainer = document.getElementById('landingContainer')
+    const profileImg = document.createElement('img')
+    switch (selectedType) {
+      case 'games':
+        profileImg.src = item.attributes.poster.url
+        profileImg.id = 'profileImg'
+        document.getElementById('about').innerHTML = item.attributes.synopsis
+        document.getElementById('title').innerHTML = item.attributes.title
+        landingContainer.appendChild(profileImg)
+        break;
+     case 'characters':
+        profileImg.src = item.attributes.profile.url
+        profileImg.id = 'profileImg'
+        document.getElementById('about').innerHTML = item.attributes.about
+        document.getElementById('title').innerHTML = item.attributes.name
+        document.getElementById('picture').appendChild(profileImg)
+        break; 
+    case 'people':
+        profileImg.src = item.attributes.profile.url
+        profileImg.id = 'profileImg'
+        document.getElementById('about').innerHTML = item.attributes.about
+        document.getElementById('title').innerHTML = item.attributes.name
+        document.getElementById('picture').appendChild(profileImg)
+        break; 
+    case 'studios':
+        profileImg.src = item.attributes.banner.url
+        profileImg.id = 'profileImg'
+        document.getElementById('about').innerHTML = item.attributes.about
+        document.getElementById('title').innerHTML = item.attributes.name
+        document.getElementById('picture').appendChild(profileImg)
+        break; 
+    case 'songs':
+        profileImg.src = item.attributes.profile.url
+        profileImg.id = 'profileImg'
+        document.getElementById('about').innerHTML = item.attributes.about
+        document.getElementById('title').innerHTML = item.attributes.name
+        document.getElementById('picture').appendChild(profileImg)
+        break; 
     }
-    
-    else if(document.getElementById('searchPage').style.backgroundColor = 'black'){
-        click = 1
-    }
-
-    if(click === 0){
-        document.getElementById('searchPage').style.backgroundColor = 'black'
-        document.getElementById('searchPage').style.color = 'white'
-        console.log("Yay black")
-    }
-
-    else if(click === 1){
-        document.getElementById('searchPage').style.backgroundColor = 'white'
-        document.getElementById('searchPage').style.color = 'black'
-        console.log("Yay white")
-    }
-})
 }
-*/
+

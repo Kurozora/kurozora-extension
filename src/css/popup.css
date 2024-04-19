@@ -128,36 +128,7 @@ img:not([src]):not([srcset]) {
 
 
 #searchPage{
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     padding: 0 10px 0 10px;
-}
-
-#searchText{
-    position: relative;
-    font-weight: bold;
-    font-size: 25px;
-    top: 20px;
-}
-
-#search{
-    width: 350px;
-    position: absolute;
-    outline: none;
-    top: 70px;
-    border: 1px solid black;
-    border-radius: 10px;
-}
-
-#search:focus{
-    position: absolute;
-    outline: none;
-    border: 1px solid orange;
-    border-radius: 10px;
-    top: 70px;
 }
 
 #searchData{
@@ -165,7 +136,7 @@ img:not([src]):not([srcset]) {
     grid-template-columns: auto;
     gap: 10px;
     position: relative;
-    top: 50px;
+    top: 30px;
 }
 
 #container{
@@ -200,4 +171,22 @@ img:not([src]):not([srcset]) {
 
 #genre{
     font-size: 10px;
+}
+
+#profileImg{
+    position: absolute;
+    top: 0;
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    border-color: black;
+    border-width: 1px;
+    margin-top: 20px;
+}
+
+.buttons {
+    display: flex;
+    overflow-x: auto; /* Add horizontal scrollbar */
+    white-space: nowrap; /* Prevent button wrapping */
+    padding-bottom: 1rem; /* Add bottom padding to prevent overlap with scrollbar */
 }

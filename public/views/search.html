@@ -1,7 +1,22 @@
-<div id="searchPage">
-    <h1 class="text-2xl font-bold relative top-5 searchText">Search</h1>
-    <input type="text" id="search" class="relative top-10" placeholder="Search here...">
-    <div class="buttons flex overflow-x-scroll no-scrollbar items-center justify-center gap-4 mt-28 text-center mr-4 ml-4">
+<div id="searchPage" class="flex flex-col gap-y-4 items-center justify-center">
+    <div class="w-full flex items-center justify-center mt-4">
+        <svg class="block h-6 w-auto" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+            <title>Kurozora</title>
+            <g transform="translate(0.500000, 0.000000)">
+                <path d="M4.26356589,25.6953027 C4.25865611,30.1220323 6.11477477,34.3424354 9.36940612,37.3048315 C6.04486859,33.8984502 5.89762765,28.4720384 9.03244888,24.886623 C12.1672701,21.3012076 17.5136377,20.7811787 21.2674782,23.6965497 C25.0213187,26.6119208 25.9007262,31.9671163 23.2799805,35.9517818 C20.6592348,39.9364472 15.4332991,41.1898517 11.3205565,38.8201669 C13.8256676,40.4665942 16.7506698,41.3407107 19.7388593,41.3359375 C28.2881704,41.3359375 35.2170543,34.3335972 35.2170543,25.6953027 C35.2170543,17.0570082 28.2881704,10.0546875 19.7388593,10.0546875 C11.1924595,10.0546875 4.26356589,17.0575967 4.26356589,25.6953027 Z"></path>
+                <path d="M1.02325581,22.9450189 C1.02325581,24.4181799 1.17548672,25.8873356 1.47831164,27.3285372 C1.40322831,26.6431228 1.36549315,25.9540748 1.36527611,25.2644961 C1.36527611,14.9125812 9.69261577,6.5201841 19.9642832,6.5201841 C30.2359506,6.5201841 38.5632903,14.9143428 38.5632903,25.2644961 C38.5632903,35.2634982 30.7941364,43.4333429 21.0084053,43.9788605 C21.3090565,43.9917791 21.610873,44 21.9150202,44 C33.4516369,44 42.8062016,34.5735271 42.8062016,22.9450189 C42.8062016,11.3165107 33.4528022,1.890625 21.9150202,1.890625 C10.3784035,1.890625 1.02325581,11.3170979 1.02325581,22.9450189 Z"></path>
+                <path d="M0.937984496,12.890625 C3.00055919,6.51588805 8.78568735,1.96729358 15.0930233,0 C7.6776734,0 0.937984496,4.79560892 0.937984496,12.890625 Z"></path>
+            </g>
+        </svg>
+    </div>
+
+    <div class="flex flex-col gap-y-4 items-start justify-center w-full">
+        <h1 class="text-2xl font-bold  mt-2">Search</h1>
+        <input type="text" id="search" class="outline-none focus:border-orange-500 rounded-md w-[350px]" placeholder="I'm searching for...">
+    </div>
+    
+
+    <div class="buttons overflow-x-scroll items-center justify-center gap-4 text-center mr-4 ml-4">
         <button id="types[]=shows" class="button inline-flex items-center justify-center pl-2 pr-2 pt-1 pb-1 bg-orange-500 border rounded-md text-xs text-white font-semibold uppercase tracking-widest transition ease-in-out duration-150 hover:bg-orange-400 active:bg-orange-600 focus:outline-none active:border-orange-600 active:ring-orange disabled:bg-gray-200 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-default sm:px-4 sm:py-2 p-4" type='button'>ANIME</button>
         <button id="types[]=literature" class="button inline-flex items-center justify-center pl-2 pr-2 pt-1 pb-1 bg-orange-500 border rounded-md text-xs text-white font-semibold uppercase tracking-widest transition ease-in-out duration-150 hover:bg-orange-400 active:bg-orange-600 focus:outline-none active:border-orange-600 active:ring-orange disabled:bg-gray-200 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-default sm:px-4 sm:py-2 p-4" type='button'>MANGA</button>
         <button id="types[]=games" class="button inline-flex items-center justify-center pl-2 pr-2 pt-1 pb-1 bg-orange-500 border rounded-md text-xs text-white font-semibold uppercase tracking-widest transition ease-in-out duration-150 hover:bg-orange-400 active:bg-orange-600 focus:outline-none active:border-orange-600 active:ring-orange disabled:bg-gray-200 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-default sm:px-4 sm:py-2 p-4" type='button'>GAMES</button>

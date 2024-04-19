@@ -10,6 +10,17 @@
     "short_name": "Kurozora",
     "version": "1.0.1",
     "description": "Search Kurozora for anime, manga, games, characters, voice actors, songs, studios and more!",
+    "content_scripts": [
+        {
+            "matches": [
+                "*://*.mangadex.org/*",
+                "*://*.anilist.co/*",
+                "*://*.myanimelist.net/*"
+            ],
+            "run_at": "document_idle",
+            "js": ["inject.js"]
+        }
+    ],
     "icons": {
         "48": "/img/icon.webp",
         "96": "/img/icon@2x.webp"
@@ -31,7 +42,8 @@
     "permissions": [
         "activeTab",
         "storage",
-        "search"
+        "search",
+        "scripting"
     ],
     "host_permissions": [
         "https://*.kurozora.app/"
