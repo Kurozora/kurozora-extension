@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div id="searchPage" class="flex flex-col gap-y-4 items-center justify-center">
     <div class="w-full flex items-center justify-center mt-4">
         <svg class="block h-6 w-auto" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
@@ -26,6 +27,81 @@
         <button id="types[]=songs" class="button inline-flex items-center justify-center pl-2 pr-2 pt-1 pb-1 bg-orange-500 border rounded-md text-xs text-white font-semibold uppercase tracking-widest transition ease-in-out duration-150 hover:bg-orange-400 active:bg-orange-600 focus:outline-none active:border-orange-600 active:ring-orange disabled:bg-gray-200 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-default sm:px-4 sm:py-2 p-4" type='button'>SONGS</button>
         <button id="types[]=studios" class="button inline-flex items-center justify-center pl-2 pr-2 pt-1 pb-1 bg-orange-500 border rounded-md text-xs text-white font-semibold uppercase tracking-widest transition ease-in-out duration-150 hover:bg-orange-400 active:bg-orange-600 focus:outline-none active:border-orange-600 active:ring-orange disabled:bg-gray-200 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-default sm:px-4 sm:py-2 p-4" type='button'>STUDIOS</button>
         <button id="types[]=users" class="button inline-flex items-center justify-center pl-2 pr-2 pt-1 pb-1 bg-orange-500 border rounded-md text-xs text-white font-semibold uppercase tracking-widest transition ease-in-out duration-150 hover:bg-orange-400 active:bg-orange-600 focus:outline-none active:border-orange-600 active:ring-orange disabled:bg-gray-200 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-default sm:px-4 sm:py-2 p-4" type='button'>USERS</button>
+=======
+<div id="searchPage" class="pl-4 pr-4 py-6">
+    <div class="flex gap-1">
+        <div class="flex flex-wrap items-center w-full">
+            <h1 class="text-2xl font-bold">Search</h1>
+        </div>
+
+        <div class="flex flex-wrap justify-end items-center w-full">
+        </div>
+>>>>>>> 399769c05d3d3d2741ae2c8a2f074486e719ee46
     </div>
-    <div id="searchData"></div>
+
+    <div class="gap-2 items-center mt-4 mb-4 space-y-2 sm:flex sm:space-y-0">
+        <div class="flex flex-1 gap-2 items-center">
+            <input id="search" class="form-input w-full rounded-md shadow-sm focus:border-orange-500 focus:ring-orange-500" type="text" placeholder="I’m searching for…">
+        </div>
+    </div>
+
+    <section class="flex gap-2 overflow-x-scroll no-scrollbar">
+        <button id="type-shows" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            Anime
+        </button>
+        <button id="type-literature" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            Manga
+        </button>
+        <button id="type-games" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            Games
+        </button>
+        <button id="type-episodes" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            Episodes
+        </button>
+        <button id="type-characters" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            Characters
+        </button>
+        <button id="type-people" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            People
+        </button>
+        <button id="type-songs" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            Songs
+        </button>
+        <button id="type-studios" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            Studios
+        </button>
+        <button id="type-users" class="inline-flex items-center pl-2 pr-2 pt-1 pb-1 bg-white border border-orange-500 rounded-md font-semibold text-xs text-orange-500 uppercase tracking-widest shadow-sm transition ease-in-out duration-150 hover:bg-orange-400 hover:border-orange-400 hover:text-white focus:outline-none focus:border-orange-600 focus:ring-orange active:text-white active:bg-orange-600 disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-default sm:px-4 sm:py-2" type="button">
+            Users
+        </button>
+    </section>
+
+    <section id="searchData" class="mt-4">
+        <ul class="flex flex-col gap-4 items-center mt-8">
+            <li>
+                <button class="pl-4 pr-4 pb-2 text-orange-500">
+                    One Piece
+                </button>
+            </li>
+            <li>
+                <button class="pl-4 pr-4 pb-2 text-orange-500">
+                    Pokemon
+                </button>
+            </li>
+            <li>
+                <button class="pl-4 pr-4 pb-2 text-orange-500">
+                    Re:Zero
+                </button>
+            </li>
+            <li>
+                <button class="pl-4 pr-4 pb-2 text-orange-500">
+                    Death Note
+                </button>
+            </li>
+            <li>
+                <button class="pl-4 pr-4 pb-2 text-orange-500">
+                    アキラ
+                </button>
+            </li>
+        </ul>
+    </section>
 </div>

@@ -1,9 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
 /**
  * This injects Tailwind's base styles, which is a combination of
  * Normalize.css and some additional base styles.
  */
 @tailwind base;
+
+html, body {
+    @apply scroll-smooth;
+    width: 400px;
+    height: 600px;
+    padding: 0;
+    margin: 0;
+}
+
+::selection {
+    @apply text-white
+    bg-orange-500;
+}
 
 /**
  * Remove the default box-shadow for invalid elements to prevent
@@ -31,16 +43,6 @@ input:invalid, textarea:invalid, select:invalid {
  */
 
 /* Global styles */
-
-
-html, body {
-    @apply scroll-smooth;
-    width: 400px;
-    height: 600px;
-    padding: 0;
-    margin: 0;
-}
-
 ul, ol {
     margin: 1em 0 1em 1.1em;
 }
@@ -125,6 +127,7 @@ img:not([src]):not([srcset]) {
  * config file.
  */
 @tailwind variants;
+<<<<<<< HEAD
 
 
 #searchPage{
@@ -190,3 +193,5 @@ img:not([src]):not([srcset]) {
     white-space: nowrap; /* Prevent button wrapping */
     padding-bottom: 1rem; /* Add bottom padding to prevent overlap with scrollbar */
 }
+=======
+>>>>>>> 399769c05d3d3d2741ae2c8a2f074486e719ee46
