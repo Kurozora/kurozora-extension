@@ -1,12 +1,6 @@
 import browser from 'webextension-polyfill'
-<<<<<<< HEAD
 let selectedType = "";
 let result;
-=======
-
-let selectedType = 'shows'
-
->>>>>>> 399769c05d3d3d2741ae2c8a2f074486e719ee46
 document.addEventListener('DOMContentLoaded', function() {
     loadApp()
 })
@@ -74,76 +68,6 @@ async function loadSearchContent() {
     const res =  await fetch('views/search.html')
     document.getElementById('app').innerHTML = await res.text()
 
-<<<<<<< HEAD
-                //
-                ans.data[selectedType].data.forEach(async(search)=> {
-                    const container = document.createElement('div')
-                    container.id = 'container'
-                    
-                    //just the basic information that is created for each data
-                    const details = document.createElement('div')
-                    details.id = 'details'
-                    const poster = document.createElement('img')
-                    
-                    poster.id = 'poster'
-                    const title = document.createElement('p')
-                    title.id = 'title'
-                    const genre = document.createElement('p')
-                    genre.id = 'genre'
-
-                    const href = search.href;
-                    const name = await fetch('https://api.kurozora.app' + href) //getting the indivdual search data
-                    const item = await name.json();
-
-                     //conditional statements for the individual search processes 
-                    //might be removed if a better solution is implemented
-                    if(selectedType == 'characters'){
-                        poster.src = item.data[0].attributes.profile.url
-                        container.appendChild(poster)
-                        title.textContent = item.data[0].attributes.name
-                        details.appendChild(title)
-                    } else if(selectedType == `studios`){
-                        poster.src = item.data[0].attributes.banner.url
-                        container.appendChild(poster)
-                        title.textContent = item.data[0].attributes.name
-                        details.appendChild(title)
-                    }  else if(selectedType == `episodes`){
-                        poster.src = item.data[0].attributes.poster.url
-                        container.appendChild(poster)
-                        title.textContent = item.data[0].attributes.title
-                        details.appendChild(title)
-                    }
-                    else if(selectedType == 'shows' || selectedType == 'games' || selectedType == 'literature'){
-                        poster.src = item.data[0].attributes.poster.url
-                        title.textContent = item.data[0].attributes.title
-                        genre.textContent = item.data[0].attributes.genres
-                        details.appendChild(title)
-                        details.appendChild(genre)
-                        container.appendChild(poster)
-                    } else if(selectedType == 'users'){
-                        poster.src = item.data[0].attributes.profile.url
-                        details.appendChild(title)
-                        container.appendChild(poster)
-                        title.textContent = item.data[0].attributes.username
-                        details.appendChild(title)
-                    } else if(selectedType == 'people'){
-                        title.textContent = item.data[0].attributes.fullName
-                        poster.src = item.data[0].attributes.profile.url
-                        details.appendChild(title)
-                        container.appendChild(poster)
-                    } else if(selectedType == 'songs'){
-                        title.innerHTML = item.data[0].attributes.title
-                        genre.innerHTML = item.data[0].attributes.artist
-                        details.appendChild(title)
-                        details.appendChild(genre)
-                    }
-                    container.appendChild(details)
-                    
-                    poster.addEventListener('click', () => landingPage(item.data[0]))
-                    //appending all to the main HTML
-                    document.getElementById('searchData').appendChild(container)
-                })
-=======
     configureSearchTypes()
 
     document.getElementById('search').addEventListener('keydown', async (e)=>{
@@ -154,26 +78,8 @@ async function loadSearchContent() {
                 headers: {
                     'Accept': 'application/json'
                 }
->>>>>>> 399769c05d3d3d2741ae2c8a2f074486e719ee46
             }
 
-<<<<<<< HEAD
-    
-
-function toggleSearchType(type) {
-    selectedType = type //assigning selectedType to the name of the id
-    const buttons = document.querySelectorAll("button[id^='types[]=']")
-    buttons.forEach(button => {
-            if (button.id === `types[]=${type}`) {
-                button.classList.add('bg-orange-500')
-                button.classList.add('text-white')
-                
-            } else{
-                button.classList.add('text-orange-500')
-                button.classList.remove('text-white')
-                button.classList.add('border-orange-500')
-                button.classList.remove('bg-orange-500')
-=======
             // Creates a blank environment when making a new search
             document.getElementById('searchData').innerHTML = ""
             const searchItem = document.getElementById('search').value
@@ -264,57 +170,11 @@ function toggleSearchType(type) {
 
                 //appending all to the main HTML
                 containerElement.appendChild(smallLockup)
->>>>>>> 399769c05d3d3d2741ae2c8a2f074486e719ee46
             }
         }
     })
 }
 
-<<<<<<< HEAD
-async function landingPage(item){
-    const res =  await fetch(`views/${selectedType}/landing.html`)
-    document.getElementById('app').innerHTML = await res.text()
-    const landingContainer = document.getElementById('landingContainer')
-    const profileImg = document.createElement('img')
-    switch (selectedType) {
-      case 'games':
-        profileImg.src = item.attributes.poster.url
-        profileImg.id = 'profileImg'
-        document.getElementById('about').innerHTML = item.attributes.synopsis
-        document.getElementById('title').innerHTML = item.attributes.title
-        landingContainer.appendChild(profileImg)
-        break;
-     case 'characters':
-        profileImg.src = item.attributes.profile.url
-        profileImg.id = 'profileImg'
-        document.getElementById('about').innerHTML = item.attributes.about
-        document.getElementById('title').innerHTML = item.attributes.name
-        document.getElementById('picture').appendChild(profileImg)
-        break; 
-    case 'people':
-        profileImg.src = item.attributes.profile.url
-        profileImg.id = 'profileImg'
-        document.getElementById('about').innerHTML = item.attributes.about
-        document.getElementById('title').innerHTML = item.attributes.name
-        document.getElementById('picture').appendChild(profileImg)
-        break; 
-    case 'studios':
-        profileImg.src = item.attributes.banner.url
-        profileImg.id = 'profileImg'
-        document.getElementById('title').innerHTML = item.attributes.name
-        document.getElementById('picture').appendChild(profileImg)
-        break; 
-    case 'songs':
-        profileImg.src = item.attributes.profile.url
-        profileImg.id = 'profileImg'
-        document.getElementById('about').innerHTML = item.attributes.about
-        document.getElementById('title').innerHTML = item.attributes.name
-        document.getElementById('picture').appendChild(profileImg)
-        break; 
-    }
-}
-
-=======
 function toggleSearchType(type) {
     selectedType = type // Assigning selectedType to the name of the id
 
@@ -350,4 +210,3 @@ function toggleSearchType(type) {
 //         }
 //     })
 // }
->>>>>>> 399769c05d3d3d2741ae2c8a2f074486e719ee46
