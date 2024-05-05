@@ -301,7 +301,6 @@ async function landingPage(item){
     case 'studios':
         profileImg.src = item.attributes.banner.url
         profileImg.id = 'profileImg'
-        document.getElementById('about').innerHTML = item.attributes.about
         document.getElementById('title').innerHTML = item.attributes.name
         document.getElementById('picture').appendChild(profileImg)
         break; 
