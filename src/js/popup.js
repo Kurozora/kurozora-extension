@@ -155,7 +155,7 @@ async function loadSearchContent() {
                 }
 
                 // Configure the lockup
-                const posterElement = smallLockup.querySelector('#poster')
+                const posterElement = smallLockup.querySelector('picture')
                 posterElement.id = ''
                 posterElement.src = poster
                 const titleElement = smallLockup.querySelector('#title')
@@ -187,26 +187,3 @@ function toggleSearchType(type) {
         }
     })
 }
-
-// //switch between dark mode and light mode
-// function modeSwitch() {
-//     let click = 0
-//     document.getElementById('mode').addEventListener('click', () => {
-//
-//         if (document.getElementById('searchPage').style.backgroundColor = 'white') {
-//             click = 0
-//         } else if (document.getElementById('searchPage').style.backgroundColor = 'black') {
-//             click = 1
-//         }
-//
-//         if (click === 0) {
-//             document.getElementById('searchPage').style.backgroundColor = 'black'
-//             document.getElementById('searchPage').style.color = 'white'
-//             console.log("Yay black")
-//         } else if (click === 1) {
-//             document.getElementById('searchPage').style.backgroundColor = 'white'
-//             document.getElementById('searchPage').style.color = 'black'
-//             console.log("Yay white")
-//         }
-//     })
-// }

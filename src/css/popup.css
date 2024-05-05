@@ -127,8 +127,6 @@ img:not([src]):not([srcset]) {
  * config file.
  */
 @tailwind variants;
-<<<<<<< HEAD
-
 
 #searchPage{
     padding: 0 10px 0 10px;
@@ -179,28 +177,10 @@ img:not([src]):not([srcset]) {
 #profileImg{
     position: absolute;
     top: 0;
-<<<<<<< Updated upstream
-    width: 128px;
-    height: 128px;
-=======
     width: 100px;
     height: 100px;
->>>>>>> Stashed changes
     border-radius: 50%;
     border-color: black;
     border-width: 1px;
     margin-top: 20px;
-<<<<<<< Updated upstream
 }
-
-.buttons {
-    display: flex;
-    overflow-x: auto; /* Add horizontal scrollbar */
-    white-space: nowrap; /* Prevent button wrapping */
-    padding-bottom: 1rem; /* Add bottom padding to prevent overlap with scrollbar */
-}
-=======
->>>>>>> 399769c05d3d3d2741ae2c8a2f074486e719ee46
-=======
-}
->>>>>>> Stashed changes
