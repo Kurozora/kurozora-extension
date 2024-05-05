@@ -179,12 +179,18 @@ img:not([src]):not([srcset]) {
 #profileImg{
     position: absolute;
     top: 0;
+<<<<<<< Updated upstream
     width: 128px;
     height: 128px;
+=======
+    width: 100px;
+    height: 100px;
+>>>>>>> Stashed changes
     border-radius: 50%;
     border-color: black;
     border-width: 1px;
     margin-top: 20px;
+<<<<<<< Updated upstream
 }
 
 .buttons {
@@ -195,3 +201,6 @@ img:not([src]):not([srcset]) {
 }
 =======
 >>>>>>> 399769c05d3d3d2741ae2c8a2f074486e719ee46
+=======
+}
+>>>>>>> Stashed changes
