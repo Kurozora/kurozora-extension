@@ -59,3 +59,140 @@ browser.runtime.onMessage.addListener(
         }
     }
 )
+
+/*
+ Called when the item has been created, or when creation failed due to an error.
+ We'll just log success/failure here.
+ */
+function onCreated() {
+    if (browser.runtime.lastError) {
+        console.log(`Error: ${browser.runtime.lastError}`);
+    } else {
+        console.log("Item created successfully");
+    }
+}
+
+browser.contextMenus.create(
+    {
+        id: `search-anime`,
+        title: `Search for Anime`,
+        contexts: ['selection'],
+        icons: {
+            '16': 'img/symbols/tv.svg'
+        }
+    },
+    onCreated,
+)
+
+browser.contextMenus.create(
+    {
+        id: `search-manga`,
+        title: `Search for Manga`,
+        contexts: ['selection'],
+        icons: {
+            '16': 'img/symbols/book.svg'
+        }
+    },
+    onCreated,
+)
+
+browser.contextMenus.create(
+    {
+        id: `search-game`,
+        title: `Search for Game`,
+        contexts: ['selection'],
+        icons: {
+            '16': 'img/symbols/gamecontroller.svg'
+        }
+    },
+    onCreated,
+)
+
+browser.contextMenus.create(
+    {
+        id: `search-song`,
+        title: `Search for Song`,
+        contexts: ['selection'],
+        icons: {
+            '16': 'img/symbols/music_note.svg'
+        }
+    },
+    onCreated,
+)
+
+browser.contextMenus.create(
+    {
+        id: `search-character`,
+        title: `Search for Character`,
+        contexts: ['selection'],
+        icons: {
+            '16': 'img/symbols/totoro.svg'
+        }
+    },
+    onCreated,
+)
+
+browser.contextMenus.create(
+    {
+        id: `search-person`,
+        title: `Search for Person`,
+        contexts: ['selection'],
+        icons: {
+            '16': 'img/symbols/person.svg'
+        }
+    },
+    onCreated,
+)
+
+browser.contextMenus.create(
+    {
+        id: `search-studio`,
+        title: `Search for Studio`,
+        contexts: ['selection'],
+        icons: {
+            '16': 'img/symbols/building_2.svg'
+        }
+    },
+    onCreated,
+)
+
+browser.contextMenus.onClicked.addListener((info, tab) => {
+    browser.contextMenus.remove(info.menuItemId)
+
+    switch (info.menuItemId) {
+        case 'search-anime': {
+            let query = info.selectionText
+            return searchOnKurozora(query, 'shows')
+        }
+        case 'search-manga': {
+            let query = info.selectionText
+            return searchOnKurozora(query, 'literatures')
+        }
+        case 'search-game': {
+            let query = info.selectionText
+            return searchOnKurozora(query, 'games')
+        }
+        case 'search-song': {
+            let query = info.selectionText
+            return searchOnKurozora(query, 'songs')
+        }
+        case 'search-character': {
+            let query = info.selectionText
+            return searchOnKurozora(query, 'characters')
+        }
+        case 'search-person': {
+            let query = info.selectionText
+            return searchOnKurozora(query, 'people')
+        }
+        case 'search-studio': {
+            let query = info.selectionText
+            return searchOnKurozora(query, 'studios')
+        }
+    }
+})
+
+function searchOnKurozora(query, type) {
+    browser.windows.create({
+        url: `https://kurozora.app/search?q=${query}&type=${type}`
+    });
+}
