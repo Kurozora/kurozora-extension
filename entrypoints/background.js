@@ -1,4 +1,5 @@
 import browser from 'webextension-polyfill'
+import {setupContextMenu} from '/app/components/context menu/index'
 
 async function signIn(email, password) {
     const url = 'https://api.kurozora.app/v1/users/signin'
@@ -59,3 +60,9 @@ browser.runtime.onMessage.addListener(
         }
     }
 )
+
+// Setup context menus
+browser.runtime.onInstalled.addListener(async (details) => {
+    await setupContextMenu()
+})
+browser.storage.sync.onChanged.addListener(setupContextMenu)
