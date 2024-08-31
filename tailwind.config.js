@@ -9,7 +9,7 @@ export default {
   darkMode: 'class',
 
   content: [
-    './popup.html',
+    './entrypoints/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue}',
     './public/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue}',
     './src/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue}'
   ],
