@@ -1,15 +1,12 @@
-import { defineConfig } from "vite";
-import webExtension, { readJsonFile } from "vite-plugin-web-extension";
+import { defineConfig } from "vite"
+import webExtension, { readJsonFile } from "vite-plugin-web-extension"
+import zipPack from "vite-plugin-zip-pack"
 
 function generateManifest() {
-    const manifest = readJsonFile("manifest.json");
-    const pkg = readJsonFile("package.json");
+    const manifest = readJsonFile("manifest.json")
     return {
-        name: pkg.name,
-        description: pkg.description,
-        version: pkg.version,
         ...manifest,
-    };
+    }
 }
 
 export default defineConfig({
@@ -19,5 +16,8 @@ export default defineConfig({
             manifest: generateManifest,
             watchFilePaths: ["package.json", "manifest.json"],
         }),
+        zipPack({
+            outFileName: 'Kurozora.zip'
+        })
     ],
-});
+})
