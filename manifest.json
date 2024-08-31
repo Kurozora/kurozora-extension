@@ -15,18 +15,19 @@
         "96": "/img/icon@2x.webp"
     },
     "action": {
-        "default_popup": "popup.html",
+        "default_popup": "entrypoints/popup/index.html",
         "default_icon": {
             "48": "/img/icon.webp",
             "96": "/img/icon@2x.webp"
         }
     },
     "background": {
-        "{{chrome}}.service_worker": "background.js",
-        "{{firefox}}.scripts": ["background.js"]
+        "{{chrome}}.service_worker": "entrypoints/background.js",
+        "{{firefox}}.scripts": ["entrypoints/background.js"],
+        "type": "module"
     },
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self';"
+        "extension_pages": "default-src 'none'; object-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.bunny.net/; font-src 'self' https://fonts.bunny.net/; img-src 'self' data: blob:;"
     },
     "permissions": [
         "activeTab",
