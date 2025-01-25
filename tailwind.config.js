@@ -1,4 +1,4 @@
-const defaultTheme = require('tailwindcss/defaultTheme')
+const defaultTheme = require("tailwindcss/defaultTheme");
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -6,57 +6,65 @@ export default {
     optimizeUniversalDefaults: true,
   },
 
-  darkMode: 'class',
+  darkMode: "class",
 
   content: [
-    './entrypoints/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue}',
-    './public/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue}',
-    './src/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue}'
+    "./popup.html",
+    "./public/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue,svelte}",
+    "./src/**/*.{html,js,jsx,md,mdx,php,ts,tsx,twig,vue,svelte}",
   ],
 
   theme: {
     extend: {
       colors: {
         grayBlue: {
-          DEFAULT: '#353A50',
-          '100': '#EBEBEE',
-          '200': '#CDCED3',
-          '300': '#AEB0B9',
-          '400': '#878EAF',
-          '500': '#353A50',
-          '600': '#2A2F48',
-          '700': '#23273A',
-          '800': '#202330',
-          '900': '#101118',
+          DEFAULT: "#353A50",
+          100: "#EBEBEE",
+          200: "#CDCED3",
+          300: "#AEB0B9",
+          400: "#878EAF",
+          500: "#353A50",
+          600: "#2A2F48",
+          700: "#23273A",
+          800: "#202330",
+          900: "#101118",
         },
         neutral: {
-          '750': '#333333',
+          50: "#fafafa",
+          100: "#f5f5f5",
+          200: "#e5e5e5",
+          300: "#d4d4d4",
+          400: "#a3a3a3",
+          500: "#737373",
+          600: "#525252",
+          700: "#404040",
+          800: "#262626",
+          900: "#171717",
+          750: "#333333",
         },
         orange: {
-          DEFAULT: '#FF9300',
-          '50': '#FFF4E5',
-          '100': '#FFE9CC',
-          '200': '#FFD499',
-          '300': '#FFBE66',
-          '400': '#FFA933',
-          '500': '#FF9300',
-          '600': '#E68400',
-          '700': '#CC7600',
-          '800': '#B36700',
-          '900': '#995800'
+          DEFAULT: "#FF9300",
+          50: "#FFF4E5",
+          100: "#FFE9CC",
+          200: "#FFD499",
+          300: "#FFBE66",
+          400: "#FFA933",
+          500: "#FF9300",
+          600: "#E68400",
+          700: "#CC7600",
+          800: "#B36700",
+          900: "#995800",
         },
       },
 
       fontFamily: {
-        sans: ['Inter', ...defaultTheme.fontFamily.sans],
-        mono: ['Fira Code VF', ...defaultTheme.fontFamily.mono],
-        source: ['Source Sans Pro', ...defaultTheme.fontFamily.sans],
-        'ubuntu-mono': ['Ubuntu Mono', ...defaultTheme.fontFamily.mono],
+        sans: ["Inter", ...defaultTheme.fontFamily.sans],
+        mono: ["Fira Code VF", ...defaultTheme.fontFamily.mono],
+        source: ["Source Sans Pro", ...defaultTheme.fontFamily.sans],
+        "ubuntu-mono": ["Ubuntu Mono", ...defaultTheme.fontFamily.mono],
       },
     },
   },
 
-  plugins: [
-    require('@tailwindcss/forms')
-  ],
-}
+  plugins: [require("@tailwindcss/forms")],
+};

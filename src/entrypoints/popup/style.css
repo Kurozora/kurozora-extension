@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+
+
+html, body {
+    @apply scroll-smooth;
+    width: 400px;
+    height: 600px;
+    padding: 0;
+    margin: 0;
+}
+
+::selection {
+    @apply text-white
+    bg-orange-500;
+}
+
+/**
+ * Remove the default box-shadow for invalid elements to prevent
+ * inputs in Livewire components showing with a
+ * red border by default in Firefox.
+ */
+input:invalid, textarea:invalid, select:invalid {
+    box-shadow: none;
+}
+
+/**
+ * This injects any component classes registered by plugins.
+ */
+
+/**
+ * Here you would add any of your custom component classes; stuff that you'd
+ * want loaded *before* the utilities so that the utilities could still
+ * override them.
+ *
+ * Example:
+ *
+ * .btn { ... }
+ * .form-input { ... }
+ */
+
+/* Global styles */
+ul, ol {
+    margin: 1em 0 1em 1.1em;
+}
+
+body {
+    @apply flex
+    flex-col
+    text-neutral-750
+    leading-snug
+    tracking-tight
+    dark:text-white;
+
+    quotes: "“" "”";
+}
+
+main {
+    @apply flex-grow;
+}
+
+picture::before {
+    @apply absolute
+    block
+    bg-transparent
+    h-full
+    w-full;
+
+    content: "";
+}
+
+/**
+ * This injects all of Tailwind's utility classes, generated based on the
+ * config file.
+ */
+@layer utilities {
+    /* Chrome, Safari and Opera */
+    .no-scrollbar::-webkit-scrollbar {
+        @apply hidden;
+    }
+
+    .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    .text-unset {
+        text-align: unset;
+    }
+}
+
+/**
+ * Here you would add any custom utilities you need that don't come out of the
+ * box with Tailwind.
+ *
+ * Example :
+ *
+ * .bg-pattern-graph-paper { ... }
+ * .skew-45 { ... }
+ */
+
+img:not([src]):not([srcset]) {
+    visibility: hidden;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+[target^="_blank"]::after {
+    content: "\0020\2197";
+    white-space: nowrap;
+}
+
+[disabled] {
+    cursor: default;
+    pointer-events: none;
+    opacity: 25%;
+}
+
+/**
+ * This injects all of Tailwind's screen classes, generated based on the
+ * config file.
+ */
+
+#searchPage{
+    padding: 0 10px 0 10px;
+}
+
+#searchData{
+    display: grid;
+    grid-template-columns: auto;
+    gap: 10px;
+    position: relative;
+    top: 30px;
+}
+
+#container{
+    position: relative;
+    display: grid;
+    grid-template-columns: auto auto;
+    width: 380px;
+    height: 200px;
+    padding: 10px;
+}
+
+#poster{
+    position: absolute;
+    width: 100px;
+    border-radius: 10px;
+}
+
+#details{
+    max-width: 180px;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+    left: 125px;
+    vertical-align: top;
+}
+
+#title{
+    font-size: 15px;
+    font-family: 'Roboto';
+}
+
+#genre{
+    font-size: 10px;
+}
+
+#profileImg{
+    position: absolute;
+    top: 0;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border-color: black;
+    border-width: 1px;
+    margin-top: 20px;
+}
