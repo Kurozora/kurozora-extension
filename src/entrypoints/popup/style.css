@@ -1,181 +1,86 @@
 @import "tailwindcss";
 
-
-
-html, body {
-    @apply scroll-smooth;
-    width: 400px;
-    height: 600px;
-    padding: 0;
-    margin: 0;
-}
-
-::selection {
-    @apply text-white
-    bg-orange-500;
-}
-
 /**
- * Remove the default box-shadow for invalid elements to prevent
- * inputs in Livewire components showing with a
- * red border by default in Firefox.
+ * Kurozora palette registered as Tailwind tokens so utilities resolve without
+ * the legacy JS config (which is not loaded under Tailwind v4).
  */
-input:invalid, textarea:invalid, select:invalid {
-    box-shadow: none;
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-orange: #FF9300;
+  --color-orange-400: #FFA933;
+  --color-orange-500: #FF9300;
+  --color-orange-600: #E68400;
+  --color-orange-700: #CC7600;
 }
 
 /**
- * This injects any component classes registered by plugins.
+ * The website's dark "app-theme" values, applied as the popup's only theme so
+ * the popup matches kurozora.app's default (dark) appearance.
  */
+:root {
+  --tint-color: #FF9300;
+  --bg-primary-color: #353A50;
+  --bg-secondary-color: #454F63;
+  --bg-tertiary-color: #667286;
+  --border-color: #AFAFAF26;
+  --primary-text-color: #EEEEEE;
+  --secondary-text-color: #AFAFAF;
+}
 
-/**
- * Here you would add any of your custom component classes; stuff that you'd
- * want loaded *before* the utilities so that the utilities could still
- * override them.
- *
- * Example:
- *
- * .btn { ... }
- * .form-input { ... }
- */
+/* Semantic theme utilities mirroring the website's app.css. */
+@utility bg-primary {
+  background-color: var(--bg-primary-color);
+}
+@utility bg-secondary {
+  background-color: var(--bg-secondary-color);
+}
+@utility bg-tertiary {
+  background-color: var(--bg-tertiary-color);
+}
+@utility bg-tint {
+  background-color: var(--tint-color);
+}
+@utility text-primary {
+  color: var(--primary-text-color);
+}
+@utility text-secondary {
+  color: var(--secondary-text-color);
+}
+@utility text-tint {
+  color: var(--tint-color);
+}
+@utility border-primary {
+  border-color: var(--border-color);
+}
+@utility border-tint {
+  border-color: var(--tint-color);
+}
 
-/* Global styles */
-ul, ol {
-    margin: 1em 0 1em 1.1em;
+html,
+body {
+  width: 400px;
+  min-height: 400px;
+  margin: 0;
+  padding: 0;
+  scroll-behavior: smooth;
 }
 
 body {
-    @apply flex
-    flex-col
-    text-neutral-750
-    leading-snug
-    tracking-tight
-    dark:text-white;
-
-    quotes: "“" "”";
+  background-color: var(--bg-primary-color);
+  color: var(--primary-text-color);
+  font-family: var(--font-sans);
+  line-height: 1.375;
+  letter-spacing: -0.01em;
 }
 
-main {
-    @apply flex-grow;
+::selection {
+  color: #ffffff;
+  background-color: var(--tint-color);
 }
 
-picture::before {
-    @apply absolute
-    block
-    bg-transparent
-    h-full
-    w-full;
-
-    content: "";
-}
-
-/**
- * This injects all of Tailwind's utility classes, generated based on the
- * config file.
- */
-@layer utilities {
-    /* Chrome, Safari and Opera */
-    .no-scrollbar::-webkit-scrollbar {
-        @apply hidden;
-    }
-
-    .no-scrollbar {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-    }
-
-    .text-unset {
-        text-align: unset;
-    }
-}
-
-/**
- * Here you would add any custom utilities you need that don't come out of the
- * box with Tailwind.
- *
- * Example :
- *
- * .bg-pattern-graph-paper { ... }
- * .skew-45 { ... }
- */
-
-img:not([src]):not([srcset]) {
-    visibility: hidden;
-}
-
-[x-cloak] {
-    display: none !important;
-}
-
-[target^="_blank"]::after {
-    content: "\0020\2197";
-    white-space: nowrap;
-}
-
-[disabled] {
-    cursor: default;
-    pointer-events: none;
-    opacity: 25%;
-}
-
-/**
- * This injects all of Tailwind's screen classes, generated based on the
- * config file.
- */
-
-#searchPage{
-    padding: 0 10px 0 10px;
-}
-
-#searchData{
-    display: grid;
-    grid-template-columns: auto;
-    gap: 10px;
-    position: relative;
-    top: 30px;
-}
-
-#container{
-    position: relative;
-    display: grid;
-    grid-template-columns: auto auto;
-    width: 380px;
-    height: 200px;
-    padding: 10px;
-}
-
-#poster{
-    position: absolute;
-    width: 100px;
-    border-radius: 10px;
-}
-
-#details{
-    max-width: 180px;
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    row-gap: 10px;
-    left: 125px;
-    vertical-align: top;
-}
-
-#title{
-    font-size: 15px;
-    font-family: 'Roboto';
-}
-
-#genre{
-    font-size: 10px;
-}
-
-#profileImg{
-    position: absolute;
-    top: 0;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border-color: black;
-    border-width: 1px;
-    margin-top: 20px;
+/* Append the external-link glyph to links that open a new tab. */
+[target="_blank"]::after {
+  content: "\0020\2197";
+  white-space: nowrap;
 }
