@@ -1,5 +1,33 @@
 import VideoTracker, { type PlaybackState } from '@/lib/scrobble/video-tracker';
-import { pageFor } from '@/lib/scrobble/page-registry';
+import { pageFor, type CapturedEpisode } from '@/lib/scrobble/page-registry';
+import { SNIFFER_MESSAGE, type SnifferMessage } from '@/lib/scrobble/sniffer-protocol';
+
+/**
+ * Folds a fresh capture over the accumulated one, keeping each defined field.
+ *
+ * @param base - The accumulated capture, when present.
+ * @param next - The freshly parsed capture.
+ */
+function mergeCaptured(base: CapturedEpisode | null, next: CapturedEpisode): CapturedEpisode {
+  const merged: CapturedEpisode = { ...base };
+
+  (Object.keys(next) as (keyof CapturedEpisode)[]).forEach((key) => {
+    const value = next[key];
+
+    if (value !== undefined && value !== null) {
+      (merged[key] as CapturedEpisode[typeof key]) = value;
+    }
+  });
+
+  return merged;
+}
+
+/**
+ * The site's favicon as an absolute URL.
+ */
+function resolveFaviconURL(): string | null {
+  return location.hostname === '' ? null : 'https://www.google.com/s2/favicons?sz=128&domain=' + location.hostname;
+}
 
 export default defineContentScript({
   matches: [
@@ -19,19 +47,20 @@ export default defineContentScript({
   allFrames: true,
   runAt: 'document_idle',
   main() {
-    // Runs in every frame of supported streaming sites. The top frame reports
-    // the playing episode's identity; whichever frame hosts the <video>
-    // reports playback. The background session manager correlates both by tab.
-
     const page = pageFor(location.href);
     const frame = window === window.top ? 'top' : 'sub';
 
     console.log('[Kurozora] content script running', { frame, url: location.href, hasPageModule: page !== null });
 
     /**
-     * The identity key last reported, to skip redundant messages.
+     * The identity key last reported.
      */
     let lastReportedIdentity: string | null = null;
+
+    /**
+     * Episode metadata captured from the site's own network responses.
+     */
+    let capturedNetwork: CapturedEpisode | null = null;
 
     /**
      * Reports the playing episode's identity to the background.
@@ -41,7 +70,7 @@ export default defineContentScript({
         return;
       }
 
-      const identity = page.identify(document, location.href);
+      const identity = page.identify(document, location.href, capturedNetwork);
       const identityKey = identity === null ? null : JSON.stringify(identity);
 
       if (identityKey === lastReportedIdentity) {
@@ -52,7 +81,7 @@ export default defineContentScript({
       console.log('[Kurozora] identity', identity);
 
       browser.runtime
-        .sendMessage({ action: 'scrobble:identity', identity: identity })
+        .sendMessage({ action: 'scrobble:identity', identity: identity, faviconURL: resolveFaviconURL() })
         .catch((error) => console.warn('[Kurozora] identity send failed', error?.message));
     }
 
@@ -71,7 +100,30 @@ export default defineContentScript({
     }
 
     if (window === window.top) {
-      // Streaming sites navigate client-side; watch the URL and title.
+      window.addEventListener('message', (event) => {
+        if (event.source !== window || page === null) {
+          return;
+        }
+
+        const message = event.data as SnifferMessage | undefined;
+
+        if (message?.source !== SNIFFER_MESSAGE || message.kind !== 'capture') {
+          return;
+        }
+
+        const parsed = page.captureNetwork?.(message.url, message.body, location.href) ?? null;
+
+        if (parsed === null) {
+          return;
+        }
+
+        capturedNetwork = mergeCaptured(capturedNetwork, parsed);
+        lastReportedIdentity = null;
+        reportIdentity();
+      });
+
+      window.postMessage({ source: SNIFFER_MESSAGE, kind: 'flush' } as SnifferMessage, location.origin);
+
       let lastURL = location.href;
 
       reportIdentity();
@@ -80,6 +132,7 @@ export default defineContentScript({
         if (location.href !== lastURL) {
           lastURL = location.href;
           lastReportedIdentity = null;
+          capturedNetwork = null;
         }
 
         reportIdentity();
@@ -90,7 +143,6 @@ export default defineContentScript({
       });
     }
 
-    // Track the current video, re-attaching if the player swaps the element.
     let tracker: VideoTracker | null = null;
     let trackedVideo: HTMLVideoElement | null = null;
 
@@ -100,7 +152,6 @@ export default defineContentScript({
     function attachToVideo(): void {
       const video = document.querySelector('video');
 
-      // Already tracking this exact, still-connected element.
       if (video !== null && video === trackedVideo && video.isConnected) {
         return;
       }
@@ -109,7 +160,6 @@ export default defineContentScript({
         return;
       }
 
-      // The player replaced the element; drop the stale tracker.
       if (tracker !== null) {
         tracker.detach();
       }
@@ -127,7 +177,6 @@ export default defineContentScript({
         duration: video.duration,
       });
 
-      // Diagnostic: confirm the element fires playback events at all.
       (['play', 'playing', 'pause', 'timeupdate', 'ended', 'loadeddata', 'emptied'] as const).forEach((event) => {
         video.addEventListener(
           event,
@@ -141,7 +190,6 @@ export default defineContentScript({
         reportPlayback('play', tracker.playbackState());
       }
 
-      // A new source in the same element is a new episode.
       video.addEventListener('loadstart', () => tracker?.reset());
     }
 
@@ -152,7 +200,6 @@ export default defineContentScript({
       childList: true,
     });
 
-    // Park the resume position when the page goes away mid-play.
     window.addEventListener('pagehide', () => {
       if (tracker !== null) {
         reportPlayback('pause', tracker.playbackState());

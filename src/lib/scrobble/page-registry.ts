@@ -29,6 +29,46 @@ export interface EpisodeIdentity {
    * The episode's own title, when the site exposes one.
    */
   episodeTitle?: string | null;
+
+  /**
+   * The episode's runtime in seconds, when the site exposes one.
+   */
+  duration?: number | null;
+}
+
+/**
+ * Episode metadata parsed from a site's own network response.
+ */
+export interface CapturedEpisode {
+  /**
+   * The series title.
+   */
+  title?: string | null;
+
+  /**
+   * The season number.
+   */
+  season?: number | null;
+
+  /**
+   * The episode number.
+   */
+  episode?: number | null;
+
+  /**
+   * The episode's own title.
+   */
+  episodeTitle?: string | null;
+
+  /**
+   * The episode's runtime in seconds.
+   */
+  duration?: number | null;
+
+  /**
+   * The site's own stable series identifier.
+   */
+  seriesID?: string | null;
 }
 
 /**
@@ -69,8 +109,25 @@ export interface PageModule {
    *
    * @param pageDocument - The document to inspect.
    * @param url - The page URL.
+   * @param captured - Episode metadata captured from the site's network, when present.
    */
-  identify(pageDocument: Document, url: string): PageIdentity | null;
+  identify(pageDocument: Document, url: string, captured?: CapturedEpisode | null): PageIdentity | null;
+
+  /**
+   * Whether a network response URL carries episode metadata worth capturing.
+   *
+   * @param url - The response URL.
+   */
+  networkMatches?(url: string): boolean;
+
+  /**
+   * The episode metadata parsed from a captured network response body.
+   *
+   * @param url - The response URL.
+   * @param body - The raw response body.
+   * @param pageURL - The watch page's URL.
+   */
+  captureNetwork?(url: string, body: string, pageURL?: string): CapturedEpisode | null;
 }
 
 /**
@@ -96,10 +153,29 @@ export function pageFor(url: string): PageModule | null {
 }
 
 /**
- * The episode identity parsed from the page's JSON-LD, when present.
+ * A network capture folded over a DOM-derived identity, field by field.
  *
- * Streaming sites commonly embed a `TVEpisode` structured-data block;
- * this is the most reliable cross-site strategy.
+ * @param captured - The network-captured metadata, when present.
+ * @param dom - The DOM-derived identity, when present.
+ */
+export function mergeIdentity(captured: CapturedEpisode | null | undefined, dom: EpisodeIdentity | null): EpisodeIdentity | null {
+  const title = captured?.title ?? dom?.title ?? null;
+
+  if (title === null || title === '') {
+    return dom;
+  }
+
+  return {
+    title: title,
+    season: captured?.season ?? dom?.season ?? null,
+    episode: captured?.episode ?? dom?.episode ?? null,
+    episodeTitle: captured?.episodeTitle ?? dom?.episodeTitle ?? null,
+    duration: captured?.duration ?? dom?.duration ?? null,
+  };
+}
+
+/**
+ * The episode identity parsed from the page's JSON-LD, when present.
  *
  * @param pageDocument - The document to inspect.
  */

@@ -62,14 +62,15 @@ interface Session {
    * The last reported position.
    */
   lastPosition: number | null;
+
+  /**
+   * The server-resolved episode's Kurozora public id, once a scrobble resolves it.
+   */
+  episodePublicID: string | null;
 }
 
 /**
  * Correlates page identities with video events and drives the scrobble API.
- *
- * The top frame reports what's playing, the player frame reports playback;
- * both land here keyed by tab. The client only reports transitions — the
- * server owns the watched decision and its threshold.
  */
 export default class ScrobbleSessionManager {
   /**
@@ -132,7 +133,6 @@ export default class ScrobbleSessionManager {
       return;
     }
 
-    // A new episode in the same tab starts a fresh session.
     if (session?.identityKey !== this.#identityKey(identity)) {
       console.log('[Kurozora] session started for tab', tabID, identity.seriesKey, 'ep', identity.episode);
       this.#sessions.set(tabID, {
@@ -142,6 +142,7 @@ export default class ScrobbleSessionManager {
         completed: false,
         lastProgress: 0,
         lastPosition: null,
+        episodePublicID: null,
       });
     }
   }
@@ -200,6 +201,15 @@ export default class ScrobbleSessionManager {
   }
 
   /**
+   * The server-resolved episode's Kurozora public id for a tab, when known.
+   *
+   * @param tabID - The tab to inspect.
+   */
+  episodePublicIDFor(tabID: number): string | null {
+    return this.#sessions.get(tabID)?.episodePublicID ?? null;
+  }
+
+  /**
    * Parks the session when its tab closes mid-play.
    *
    * @param tabID - The closed tab.
@@ -210,7 +220,6 @@ export default class ScrobbleSessionManager {
     this.#sessions.delete(tabID);
 
     if (session?.started && !session.completed && session.lastProgress > 0) {
-      // Fire-and-forget; the resume position survives the tab.
       this.#send(session, 'pause', {
         progress: session.lastProgress,
         position: session.lastPosition,
@@ -237,8 +246,11 @@ export default class ScrobbleSessionManager {
     try {
       const result = await this.#kit.scrobble[event](payload);
       console.log('[Kurozora]', event, 'sent', result.attributes);
+
+      if (result.episodeIDs.length > 0) {
+        session.episodePublicID = result.episodeIDs[0];
+      }
     } catch (error) {
-      // Non-committing events are cheap; the next one catches up.
       const apiError = error as { status?: number | null; message?: string };
       console.warn('[Kurozora]', event, 'failed', apiError.status, apiError.message);
     }
@@ -266,22 +278,20 @@ export default class ScrobbleSessionManager {
       session.completed = true;
 
       if (result.episodeIDs.length > 0) {
+        session.episodePublicID = result.episodeIDs[0];
         await this.#resolver.cacheEpisode(session.identity, result.episodeIDs[0]);
       }
 
       await this.#queue.replay();
 
-      // A watched play changes what's up next; let the background react.
       this.#onCommit();
     } catch (error) {
       const apiError = error as { status?: number | null; message?: string };
       console.warn('[Kurozora] commit failed', apiError.status, apiError.message);
 
       if (apiError.status === 409) {
-        // Already scrobbled inside the dedupe window; honor expiresAt.
         session.completed = true;
       } else if (apiError.status === undefined || apiError.status === null) {
-        // Network failure; park the dated play for replay.
         session.completed = true;
 
         await this.#queue.enqueue({
@@ -289,8 +299,6 @@ export default class ScrobbleSessionManager {
           watchedAt: Math.floor(Date.now() / 1000),
         });
       }
-      // API rejections (404, 422) are final; leave uncompleted so a
-      // corrected mapping can retry within the session.
     }
   }
 

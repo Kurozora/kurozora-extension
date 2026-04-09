@@ -17,12 +17,11 @@ export default defineBackground(() => {
     services: new KKServices(browserStore),
   });
 
-  // The popup is destroyed on close, so the persistent background owns the
-  // up-next cache and refreshes it only when the data actually changes.
   let upNextCache: UpNextRow[] | null = null;
 
+  const tabFavicons = new Map<number, string>();
+
   const scrobbleSessions = new ScrobbleSessionManager(kit, () => {
-    // A durable commit changes what's up next; refresh and push to the popup.
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
   });
 
@@ -35,8 +34,6 @@ export default defineBackground(() => {
     kit.apiEndpoint = KurozoraAPI[stored.apiEnvironment as keyof typeof KurozoraAPI] ?? KurozoraAPI.v1;
   }
 
-  // Restore the environment and session before any request needs them, then
-  // flush plays that queued while offline and open the presence channel.
   const kitReady = restoreEnvironment()
     .then(() => kit.services.restoreAuthenticationKey())
     .then(() => scrobbleSessions.replayQueue())
@@ -48,15 +45,12 @@ export default defineBackground(() => {
       }
     });
 
-  // Refresh the up-next cache the moment the user's state changes anywhere —
-  // a watch on another device bumps state_version and broadcasts here, so the
-  // popup stays fresh with no polling and no ETag round-trips.
   kit.presence.listen('.user.state.changed', () => {
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
   });
 
   /**
-   * Opens the presence channel, logging a failure without throwing.
+   * Opens the presence channel.
    */
   function connectPresence(): void {
     kit.presence.connect().catch((error: { message?: string }) => console.warn('[Kurozora] presence connect failed', error?.message));
@@ -78,19 +72,24 @@ export default defineBackground(() => {
 
     const siteModule = tab?.url ? pageFor(tab.url) : null;
     const siteName = siteModule ? siteModule.name.charAt(0).toUpperCase() + siteModule.name.slice(1) : undefined;
+    const duration = playback.duration || identity.duration || undefined;
+    const faviconURL = tabFavicons.get(tabID)
+      ?? (tab?.favIconUrl && /^https?:\/\//.test(tab.favIconUrl) ? tab.favIconUrl : undefined);
+    const episodeID = scrobbleSessions.episodePublicIDFor(tabID) ?? undefined;
 
     kit.presence.whisper('scrobble.position', {
       seriesKey: identity.seriesKey,
       title: identity.title,
       episode: identity.episode,
+      ...(episodeID ? { episodeID: episodeID } : {}),
       position: playback.position,
       progress: playback.progress,
       playing: event !== 'pause',
       ...(identity.season != null ? { season: identity.season } : {}),
       ...(identity.episodeTitle ? { episodeTitle: identity.episodeTitle } : {}),
-      ...(playback.duration ? { duration: playback.duration } : {}),
+      ...(duration ? { duration: duration } : {}),
       ...(siteName ? { siteName: siteName } : {}),
-      ...(tab?.favIconUrl ? { faviconURL: tab.favIconUrl } : {}),
+      ...(faviconURL ? { faviconURL: faviconURL } : {}),
     });
   }
 
@@ -113,14 +112,14 @@ export default defineBackground(() => {
     if (changed) {
       browser.runtime
         .sendMessage({ action: 'popup:upNextUpdated', rows: rows })
-        .catch(() => { /* No popup open to receive the update. */ });
+        .catch(() => {});
     }
 
     return rows;
   }
 
   /**
-   * The cached up-next rows, loading them once on the first request.
+   * The cached up-next rows.
    */
   async function ensureUpNext(): Promise<UpNextRow[]> {
     if (upNextCache === null) {
@@ -130,13 +129,9 @@ export default defineBackground(() => {
     return upNextCache;
   }
 
-  // The background reads storage once at boot, so mirror the popup's later
-  // sign-in and environment changes onto its own kit and presence channel.
   browser.storage.local.onChanged.addListener((changes) => {
     if (changes.apiEnvironment !== undefined) {
       kit.apiEndpoint = KurozoraAPI[changes.apiEnvironment.newValue as keyof typeof KurozoraAPI] ?? KurozoraAPI.v1;
-      // The endpoint's Reverb server changed too; reconnect against it and
-      // drop the cache so the next request refetches from the new host.
       kit.presence.disconnect();
       upNextCache = null;
 
@@ -158,11 +153,16 @@ export default defineBackground(() => {
     }
   });
 
-  // Listen for scrobble reports from the content scripts and popup requests.
   browser.runtime.onMessage.addListener((request: any, sender) => {
     console.log('[Kurozora] ← message', request.action, { tab: sender.tab?.id, frame: sender.frameId });
 
     if (request.action === 'scrobble:identity' && sender.tab?.id !== undefined) {
+      if (typeof request.faviconURL === 'string') {
+        tabFavicons.set(sender.tab.id, request.faviconURL);
+      } else {
+        tabFavicons.delete(sender.tab.id);
+      }
+
       scrobbleSessions.handleIdentity(sender.tab.id, request.identity);
     }
 
@@ -172,18 +172,14 @@ export default defineBackground(() => {
       const playback = request.playback as PlaybackState;
 
       return kitReady.then(async () => {
-        // Live layer: every event — including the throttled `progress` —
-        // whispers the position over the private channel. Zero DB, zero HTTP.
         whisperPosition(tabID, event, playback, sender.tab);
 
-        // Durable layer: transitions drive the HTTP scrobble; `progress` never does.
         if (event !== 'progress') {
           await scrobbleSessions.handlePlayback(tabID, { event: event, ...playback });
         }
       });
     }
 
-    // The popup renders the background's warm cache instantly, then revalidates.
     if (request.action === 'popup:getUpNext') {
       return kitReady
         .then(() => ensureUpNext())
@@ -199,12 +195,11 @@ export default defineBackground(() => {
     }
   });
 
-  // Park the resume position when a playing tab closes.
   browser.tabs.onRemoved.addListener((tabID) => {
     scrobbleSessions.handleTabClosed(tabID);
+    tabFavicons.delete(tabID);
   });
 
-  // Setup context menus.
   browser.runtime.onInstalled.addListener(async () => {
     await setupContextMenu();
   });

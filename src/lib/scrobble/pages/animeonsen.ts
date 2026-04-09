@@ -1,14 +1,7 @@
-import { identityFromJsonLd, type EpisodeIdentity, type PageModule } from '../page-registry';
+import { identityFromJsonLd, mergeIdentity, type EpisodeIdentity, type PageModule } from '../page-registry';
 
 /**
  * The AnimeOnsen page module.
- *
- * Watch pages live at `/watch/{contentID}` with the episode carried in an
- * optional `?episode={N}` query, and each episode is a full server render.
- * Identity comes from the server-rendered head — the `ao-content-episode`
- * meta paired with the Open Graph title — then falls back to the document
- * title and finally the client-rendered player metadata. The stable series
- * key is the content ID, not the localized title.
  */
 const animeonsen: PageModule = {
   name: 'animeonsen',
@@ -21,11 +14,48 @@ const animeonsen: PageModule = {
     return /\/watch\/[^\/]+/.test(new URL(url).pathname);
   },
 
-  identify(pageDocument, url) {
-    const identity = identityFromJsonLd(pageDocument)
-      ?? identityFromMeta(pageDocument)
-      ?? identityFromTitle(pageDocument)
-      ?? identityFromPlayer(pageDocument);
+  networkMatches(url) {
+    const parsed = new URL(url);
+
+    return parsed.hostname === 'api.animeonsen.xyz' && /^\/v4\/content\/[^/]+\/video\/\d+/.test(parsed.pathname);
+  },
+
+  captureNetwork(_url, body) {
+    let payload: any = null;
+
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return null;
+    }
+
+    const metadata = payload?.metadata;
+
+    if (metadata == null) {
+      return null;
+    }
+
+    // `metadata.episode` is [number, currentEpisode, episodesByNumber].
+    const episodeData: any[] = Array.isArray(metadata.episode) ? metadata.episode : [];
+    const number = Number(episodeData[0]);
+    const current = typeof episodeData[1] === 'object' ? episodeData[1] : null;
+    const mapped = !Number.isNaN(number) && typeof episodeData[2] === 'object' ? episodeData[2]?.[String(number)] : null;
+
+    return {
+      title: cleanString(metadata.content_title_en) ?? cleanString(metadata.content_title),
+      episode: Number.isNaN(number) ? null : number,
+      episodeTitle: cleanString(current?.contentTitle_episode_en) ?? cleanString(mapped?.contentTitle_episode_en),
+    };
+  },
+
+  identify(pageDocument, url, captured) {
+    const identity = mergeIdentity(
+      captured,
+      identityFromJsonLd(pageDocument)
+        ?? identityFromMeta(pageDocument)
+        ?? identityFromTitle(pageDocument)
+        ?? identityFromPlayer(pageDocument),
+    );
 
     if (identity === null || identity.episode === null) {
       return null;
@@ -43,11 +73,16 @@ const animeonsen: PageModule = {
 export default animeonsen;
 
 /**
- * The identity parsed from the server-rendered head metadata.
+ * The trimmed string, or null when empty or not a string.
  *
- * The watch page renders an `ao-content-episode` meta and Open Graph tags on
- * every load; `og:image:alt` carries the clean series title while `og:title`
- * appends " Episode {N}".
+ * @param value - The value to clean.
+ */
+function cleanString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
+/**
+ * The identity parsed from the server-rendered head metadata.
  *
  * @param pageDocument - The document to inspect.
  */
@@ -70,8 +105,6 @@ function identityFromMeta(pageDocument: Document): EpisodeIdentity | null {
 /**
  * The identity parsed from the document title.
  *
- * The title follows "{series} Episode {N} - AnimeOnsen".
- *
  * @param pageDocument - The document to inspect.
  */
 function identityFromTitle(pageDocument: Document): EpisodeIdentity | null {
@@ -90,10 +123,6 @@ function identityFromTitle(pageDocument: Document): EpisodeIdentity | null {
 
 /**
  * The identity parsed from the client-rendered player metadata.
- *
- * A last resort for when the head metadata is missing; the player renders the
- * series title into `.ao-player-metadata-title` and an "Episode {N}: …" label
- * into `.ao-player-metadata-episode`.
  *
  * @param pageDocument - The document to inspect.
  */
@@ -115,9 +144,6 @@ function identityFromPlayer(pageDocument: Document): EpisodeIdentity | null {
 
 /**
  * The stable series identifier for the page.
- *
- * Prefers the server-rendered `ao-content-id` meta and falls back to the
- * content ID in the `/watch/{contentID}` path.
  *
  * @param pageDocument - The document to inspect.
  * @param url - The page URL.

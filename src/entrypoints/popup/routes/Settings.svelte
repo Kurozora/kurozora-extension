@@ -7,21 +7,21 @@
   import { KurozoraAPI } from "kurozorakit";
   import { kit } from "../kit";
 
-  /** The lowest selectable watched threshold, matching the server floor. */
+  /** The lowest selectable watched threshold. */
   const MIN_THRESHOLD = 80;
   /** The highest selectable watched threshold. */
   const MAX_THRESHOLD = 100;
   /** The watched threshold shown until the settings load. */
   const DEFAULT_THRESHOLD = 90;
 
-  /** The large presence image options, matching the server enum values. */
+  /** The large presence image options. */
   const PRESENCE_IMAGES = [
     { value: 0, label: "Anime poster" },
     { value: 1, label: "Episode banner" },
-    { value: 2, label: "App icon" },
+    { value: 2, label: "Service Logo" },
     { value: 3, label: "Kurozora logo" },
   ];
-  /** The activity name options, matching the server enum values. */
+  /** The activity name options. */
   const ACTIVITY_NAMES = [
     { value: 0, label: "Anime title" },
     { value: 1, label: "Website" },
@@ -31,9 +31,9 @@
 
   /** The selected API environment key. */
   let environment = $state<keyof typeof KurozoraAPI>("v1");
-  /** The watched threshold percent, the point a played episode is marked watched. */
+  /** The watched threshold percent. */
   let threshold = $state(DEFAULT_THRESHOLD);
-  /** Whether the companion sets Discord Rich Presence. */
+  /** Whether Discord Rich Presence is enabled. */
   let discordEnabled = $state(true);
   /** The selected large presence image. */
   let presenceImage = $state(0);
@@ -81,7 +81,6 @@
         activityName = attributes.discordActivityName;
       }
     } catch {
-      // Keep the defaults when the settings can't be read.
     }
   }
 
@@ -90,7 +89,7 @@
     threshold = Number((event.target as HTMLInputElement).value);
   }
 
-  /** Persists the watched threshold to the user's server-owned settings on release. */
+  /** Persists the watched threshold to the user's server-owned settings. */
   async function saveThreshold(): Promise<void> {
     await kit.me.updateSettings({ scrobbleThreshold: threshold });
   }
@@ -126,7 +125,6 @@
 </script>
 
 <div class="flex flex-col">
-  <!-- Header -->
   <header
     class="flex items-center justify-between px-4 py-3 border-b border-primary"
   >
@@ -134,7 +132,6 @@
     <SimpleButton onclick={() => push("/")}>← Up Next</SimpleButton>
   </header>
 
-  <!-- Environment -->
   <section class="px-4 py-3 border-b border-primary">
     <label
       class="flex items-center justify-between gap-3 text-sm"
@@ -154,7 +151,6 @@
     </label>
   </section>
 
-  <!-- Watched threshold -->
   <section class="px-4 py-3 border-b border-primary">
     <label
       class="flex items-center justify-between gap-3 text-sm"
@@ -178,7 +174,6 @@
     </label>
   </section>
 
-  <!-- Discord Rich Presence -->
   <section class="flex flex-col gap-3 px-4 py-3 border-b border-primary">
     <label class="flex items-center justify-between gap-3 text-sm" for="discordEnabled">
       <span>Discord Rich Presence</span>
@@ -222,7 +217,6 @@
     </label>
   </section>
 
-  <!-- Sign out -->
   <footer class="px-4 py-3">
     <Button
       type="button"
