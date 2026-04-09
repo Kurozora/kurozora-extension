@@ -21,7 +21,7 @@
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "tslib": "^2.0.0",
-    "typescript": "^7.0.0",
+    "typescript": "^5.7.0",
     "wxt": "^0.20.0"
   },
   "dependencies": {

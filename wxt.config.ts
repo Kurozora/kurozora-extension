@@ -14,13 +14,12 @@ const EXTENSION_PAGES_CSP = "default-src 'self'; script-src 'self'; connect-src 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   srcDir: 'src',
-  extensionApi: 'chrome',
   modules: ['@wxt-dev/module-svelte'],
   // `wxt dev` launches a throwaway browser profile by default; a dedicated
   // user-data dir keeps the sign-in and environment across dev restarts.
   // Chromium-only — web-ext offers no persistent-profile equivalent for the
   // Firefox dev runner. (WXT ≥ 0.20 renames `runner` to `webExt`.)
-  runner: {
+  webExt: {
     chromiumArgs: ['--user-data-dir=./.wxt/chrome-data'],
   },
   // The manifest is generated per target browser: `action`, `icons`,

@@ -8,14 +8,10 @@ const PARENT_ID = 'Kurozora-Search';
 
 /**
  * Rebuilds the selection context menu with one entry per search type.
- *
- * Called on install and whenever synced settings change, so the existing
- * entries are cleared first to avoid duplicate-id errors.
  */
 export const setupContextMenu = async (): Promise<void> => {
   browser.contextMenus.removeAll();
 
-  // Create menu and submenu entries.
   browser.contextMenus.create({
     id: PARENT_ID,
     title: 'Kurozora',
@@ -31,10 +27,11 @@ export const setupContextMenu = async (): Promise<void> => {
         id: `search-${searchType.query}`,
         title: `Search for ${key}`,
         contexts: ['selection'],
+        // Per-item icons are absent from the shared typings.
         icons: {
           '16': searchType.symbol,
         },
-      },
+      } as Parameters<typeof browser.contextMenus.create>[0] & { icons: Record<string, string> },
       onCreated,
     );
   });
@@ -97,7 +94,6 @@ const onCreated = (): void => {
   }
 };
 
-// Attach listener.
 browser.contextMenus.onClicked.addListener((info) => {
   void performSearch(info);
 });
