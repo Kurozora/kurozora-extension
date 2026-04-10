@@ -19,7 +19,7 @@ export default defineBackground(() => {
 
   let upNextCache: UpNextRow[] | null = null;
 
-  const tabFavicons = new Map<number, string>();
+  const providers = new Map<string, { name: string; logo?: string }>();
 
   const scrobbleSessions = new ScrobbleSessionManager(kit, () => {
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
@@ -40,6 +40,8 @@ export default defineBackground(() => {
     .then(() => {
       console.log('[Kurozora] ready', { endpoint: kit.apiEndpoint.baseURL, signedIn: kit.authenticationKey !== '' });
 
+      loadProviders().catch(() => {});
+
       if (kit.authenticationKey !== '') {
         connectPresence();
       }
@@ -57,11 +59,38 @@ export default defineBackground(() => {
   }
 
   /**
+   * Loads the watch providers, keyed by slug and alternative name for logo lookup.
+   */
+  async function loadProviders(): Promise<void> {
+    try {
+      const response = await kit.request('GET', 'providers');
+      const data = (response.body?.data ?? []) as { attributes?: { slug?: string; name?: string; alternativeNames?: unknown; logo?: { url?: string } } }[];
+
+      providers.clear();
+
+      for (const provider of data) {
+        const attributes = provider.attributes ?? {};
+        const info = { name: attributes.name ?? attributes.slug ?? '', logo: attributes.logo?.url };
+        const keys = [attributes.slug, ...(Array.isArray(attributes.alternativeNames) ? attributes.alternativeNames : [])];
+
+        for (const key of keys) {
+          if (typeof key === 'string' && key !== '') {
+            providers.set(key.toLowerCase(), info);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[Kurozora] provider logos failed', (error as { message?: string })?.message);
+    }
+  }
+
+  /**
    * Whispers the current playback position on the user's private channel.
    *
    * @param tabID - The tab the playback came from.
    * @param event - The playback event name.
    * @param playback - The playback state.
+   * @param tab -
    */
   function whisperPosition(tabID: number, event: string, playback: PlaybackState, tab?: { url?: string; favIconUrl?: string }): void {
     const identity = scrobbleSessions.identityFor(tabID);
@@ -71,9 +100,11 @@ export default defineBackground(() => {
     }
 
     const siteModule = tab?.url ? pageFor(tab.url) : null;
-    const siteName = siteModule ? siteModule.name.charAt(0).toUpperCase() + siteModule.name.slice(1) : undefined;
+    const provider = siteModule ? providers.get(siteModule.name.toLowerCase()) : undefined;
+    const siteName = provider?.name
+      ?? (siteModule ? siteModule.name.charAt(0).toUpperCase() + siteModule.name.slice(1) : undefined);
     const duration = playback.duration || identity.duration || undefined;
-    const faviconURL = tabFavicons.get(tabID)
+    const faviconURL = provider?.logo
       ?? (tab?.favIconUrl && /^https?:\/\//.test(tab.favIconUrl) ? tab.favIconUrl : undefined);
     const episodeID = scrobbleSessions.episodePublicIDFor(tabID) ?? undefined;
 
@@ -134,6 +165,7 @@ export default defineBackground(() => {
       kit.apiEndpoint = KurozoraAPI[changes.apiEnvironment.newValue as keyof typeof KurozoraAPI] ?? KurozoraAPI.v1;
       kit.presence.disconnect();
       upNextCache = null;
+      loadProviders().catch(() => {});
 
       if (kit.authenticationKey !== '') {
         connectPresence();
@@ -153,16 +185,10 @@ export default defineBackground(() => {
     }
   });
 
-  browser.runtime.onMessage.addListener((request: any, sender) => {
+  browser.runtime.onMessage.addListener((request: any, sender, sendResponse) => {
     console.log('[Kurozora] ← message', request.action, { tab: sender.tab?.id, frame: sender.frameId });
 
     if (request.action === 'scrobble:identity' && sender.tab?.id !== undefined) {
-      if (typeof request.faviconURL === 'string') {
-        tabFavicons.set(sender.tab.id, request.faviconURL);
-      } else {
-        tabFavicons.delete(sender.tab.id);
-      }
-
       scrobbleSessions.handleIdentity(sender.tab.id, request.identity);
     }
 
@@ -171,33 +197,38 @@ export default defineBackground(() => {
       const event = request.event as string;
       const playback = request.playback as PlaybackState;
 
-      return kitReady.then(async () => {
+      kitReady.then(async () => {
         whisperPosition(tabID, event, playback, sender.tab);
 
         if (event !== 'progress') {
           await scrobbleSessions.handlePlayback(tabID, { event: event, ...playback });
         }
       });
+
+      return;
     }
 
     if (request.action === 'popup:getUpNext') {
-      return kitReady
+      kitReady
         .then(() => ensureUpNext())
-        .then((rows) => ({ rows: rows }))
-        .catch((error: { message?: string }) => ({ rows: [], error: error?.message ?? 'Please try again.' }));
+        .then((rows) => sendResponse({ rows: rows }))
+        .catch((error: { message?: string }) => sendResponse({ rows: [], error: error?.message ?? 'Please try again.' }));
+
+      return true;
     }
 
     if (request.action === 'popup:refreshUpNext') {
-      return kitReady
+      kitReady
         .then(() => refreshUpNext())
-        .then((rows) => ({ rows: rows }))
-        .catch((error: { message?: string }) => ({ rows: upNextCache ?? [], error: error?.message ?? 'Please try again.' }));
+        .then((rows) => sendResponse({ rows: rows }))
+        .catch((error: { message?: string }) => sendResponse({ rows: upNextCache ?? [], error: error?.message ?? 'Please try again.' }));
+
+      return true;
     }
   });
 
   browser.tabs.onRemoved.addListener((tabID) => {
     scrobbleSessions.handleTabClosed(tabID);
-    tabFavicons.delete(tabID);
   });
 
   browser.runtime.onInstalled.addListener(async () => {

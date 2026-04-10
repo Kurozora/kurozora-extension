@@ -87,7 +87,10 @@ function titleFromHeader(pageDocument: Document): string | null {
  * @param text - The raw heading or title text.
  */
 function cleanSeriesTitle(text: string): string | null {
-  const title = text.replace(/\s+\d+\s+PL\b.*$/i, '').trim();
+  const title = text
+    .replace(/\s+\d+\s+PL\b.*$/i, '')
+    .replace(/[-–—:|\s]+$/, '')
+    .trim();
 
   return title.length > 0 ? title : null;
 }

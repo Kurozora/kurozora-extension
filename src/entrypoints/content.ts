@@ -22,19 +22,14 @@ function mergeCaptured(base: CapturedEpisode | null, next: CapturedEpisode): Cap
   return merged;
 }
 
-/**
- * The site's favicon as an absolute URL.
- */
-function resolveFaviconURL(): string | null {
-  return location.hostname === '' ? null : 'https://www.google.com/s2/favicons?sz=128&domain=' + location.hostname;
-}
-
 export default defineContentScript({
   matches: [
     'https://www.crunchyroll.com/*',
     'https://static.crunchyroll.com/*',
     'https://*.an1me.to/*',
     'https://*.anime-odcinki.pl/*',
+    'https://*.lycoris.cafe/*',
+    'https://*.sibnet.ru/*',
     'https://*.animeonsen.xyz/*',
     'https://*.animepahe.pw/*',
     'https://*.kwik.cx/*',
@@ -81,7 +76,7 @@ export default defineContentScript({
       console.log('[Kurozora] identity', identity);
 
       browser.runtime
-        .sendMessage({ action: 'scrobble:identity', identity: identity, faviconURL: resolveFaviconURL() })
+        .sendMessage({ action: 'scrobble:identity', identity: identity })
         .catch((error) => console.warn('[Kurozora] identity send failed', error?.message));
     }
 
