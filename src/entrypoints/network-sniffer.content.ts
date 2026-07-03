@@ -6,6 +6,7 @@ export default defineContentScript({
   matches: [
     'https://www.crunchyroll.com/*',
     'https://static.crunchyroll.com/*',
+    'https://*.hidive.com/*',
     'https://*.an1me.to/*',
     'https://*.anime-odcinki.pl/*',
     'https://*.animeonsen.xyz/*',

@@ -58,7 +58,7 @@ const crunchyroll: PageModule = {
   identify(pageDocument, _url, captured) {
     const identity = mergeIdentity(captured, identityFromJsonLd(pageDocument) ?? identityFromTitle(pageDocument));
 
-    if (identity === null || identity.episode === null) {
+    if (identity === null) {
       return null;
     }
 
@@ -67,6 +67,7 @@ const crunchyroll: PageModule = {
     return {
       seriesKey: this.name + ':' + seriesIdentifier,
       ...identity,
+      episode: identity.episode ?? 1,
     };
   },
 };

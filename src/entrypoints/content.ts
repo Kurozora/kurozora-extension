@@ -26,6 +26,10 @@ export default defineContentScript({
   matches: [
     'https://www.crunchyroll.com/*',
     'https://static.crunchyroll.com/*',
+    'https://*.netflix.com/*',
+    'https://*.disneyplus.com/*',
+    'https://tv.apple.com/*',
+    'https://*.hidive.com/*',
     'https://*.an1me.to/*',
     'https://*.anime-odcinki.pl/*',
     'https://*.lycoris.cafe/*',

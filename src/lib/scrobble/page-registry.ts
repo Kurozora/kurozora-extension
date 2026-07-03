@@ -2,8 +2,12 @@ import an1me from './pages/an1me';
 import animeOdcinki from './pages/anime-odcinki';
 import animeonsen from './pages/animeonsen';
 import animepahe from './pages/animepahe';
+import appletv from './pages/appletv';
 import crunchyroll from './pages/crunchyroll';
+import disneyplus from './pages/disneyplus';
+import hidive from './pages/hidive';
 import jkanime from './pages/jkanime';
+import netflix from './pages/netflix';
 import witanime from './pages/witanime';
 
 /**
@@ -138,8 +142,12 @@ const pages: PageModule[] = [
   animeOdcinki,
   animeonsen,
   animepahe,
+  appletv,
   crunchyroll,
+  disneyplus,
+  hidive,
   jkanime,
+  netflix,
   witanime,
 ];
 
@@ -194,22 +202,28 @@ export function identityFromJsonLd(pageDocument: Document): EpisodeIdentity | nu
     const nodes = Array.isArray(payload) ? payload : [payload];
 
     for (const node of nodes) {
-      if (node?.['@type'] !== 'TVEpisode') {
-        continue;
+      if (node?.['@type'] === 'TVEpisode') {
+        const title = node.partOfSeries?.name ?? null;
+
+        if (title === null) {
+          continue;
+        }
+
+        return {
+          title: title,
+          season: node.partOfSeason?.seasonNumber != null ? parseInt(node.partOfSeason.seasonNumber, 10) : null,
+          episode: node.episodeNumber != null ? parseInt(node.episodeNumber, 10) : null,
+          episodeTitle: typeof node.name === 'string' ? node.name : null,
+        };
       }
 
-      const title = node.partOfSeries?.name ?? null;
-
-      if (title === null) {
-        continue;
+      if ((node?.['@type'] === 'Movie' || node?.['@type'] === 'VideoObject') && typeof node.name === 'string') {
+        return {
+          title: node.name,
+          season: null,
+          episode: null,
+        };
       }
-
-      return {
-        title: title,
-        season: node.partOfSeason?.seasonNumber != null ? parseInt(node.partOfSeason.seasonNumber, 10) : null,
-        episode: node.episodeNumber != null ? parseInt(node.episodeNumber, 10) : null,
-        episodeTitle: typeof node.name === 'string' ? node.name : null,
-      };
     }
   }
 
