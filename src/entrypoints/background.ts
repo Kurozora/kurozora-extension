@@ -1,6 +1,6 @@
 import { KurozoraKit, KKServices, KurozoraAPI } from 'kurozorakit';
 import { browserStore } from '@/lib/kit-storage';
-import ScrobbleSessionManager from '@/lib/scrobble/session-manager';
+import ScrobbleSessionManager, { type TrackingInfo } from '@/lib/scrobble/session-manager';
 import { pageFor } from '@/lib/scrobble/page-registry';
 import { API_KEY, CLIENT_IDENTIFIER } from '@/lib/config';
 import { loadUpNext, upNextRowsEqual, type UpNextRow } from '@/lib/up-next';
@@ -23,7 +23,24 @@ export default defineBackground(() => {
 
   const scrobbleSessions = new ScrobbleSessionManager(kit, () => {
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
-  });
+  }, showTrackingNotification);
+
+  /**
+   * Shows an in-page toast of the catalog anime and episode a session is tracking.
+   *
+   * @param tabID - The tab to show the toast in.
+   * @param info - The resolved catalog facts.
+   */
+  function showTrackingNotification(tabID: number, info: TrackingInfo): void {
+    browser.tabs
+      .sendMessage(tabID, {
+        action: 'tracking:show',
+        animeTitle: info.animeTitle,
+        episode: info.episode,
+        episodeTitle: info.episodeTitle,
+      })
+      .catch((error: { message?: string }) => console.warn('[Kurozora] tracking toast failed', error?.message));
+  }
 
   /**
    * Points the kit at the stored API environment.
@@ -37,6 +54,7 @@ export default defineBackground(() => {
   const kitReady = restoreEnvironment()
     .then(() => kit.services.restoreAuthenticationKey())
     .then(() => scrobbleSessions.replayQueue())
+    .then(() => restoreNotificationSetting())
     .then(() => {
       console.log('[Kurozora] ready', { endpoint: kit.apiEndpoint.baseURL, signedIn: kit.authenticationKey !== '' });
 
@@ -46,6 +64,17 @@ export default defineBackground(() => {
         connectPresence();
       }
     });
+
+  /**
+   * Applies the stored tracking-notification preference.
+   */
+  async function restoreNotificationSetting(): Promise<void> {
+    const stored = await browser.storage.local.get('trackingNotifications');
+    const enabled = stored.trackingNotifications === true;
+
+    console.log('[Kurozora] tracking notifications', enabled ? 'on' : 'off');
+    scrobbleSessions.setNotificationsEnabled(enabled);
+  }
 
   kit.presence.listen('.user.state.changed', () => {
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
@@ -115,7 +144,7 @@ export default defineBackground(() => {
       ...(episodeID ? { episodeID: episodeID } : {}),
       position: playback.position,
       progress: playback.progress,
-      playing: event !== 'pause',
+      playing: event === 'play' || event === 'progress',
       ...(identity.season != null ? { season: identity.season } : {}),
       ...(identity.episodeTitle ? { episodeTitle: identity.episodeTitle } : {}),
       ...(duration ? { duration: duration } : {}),
@@ -172,6 +201,10 @@ export default defineBackground(() => {
       }
     }
 
+    if (changes.trackingNotifications !== undefined) {
+      scrobbleSessions.setNotificationsEnabled(changes.trackingNotifications.newValue === true);
+    }
+
     if (changes[KKServices.STORAGE_KEY] !== undefined) {
       kit.authenticationKey = (changes[KKServices.STORAGE_KEY].newValue as string | undefined) ?? '';
       console.log('[Kurozora] session updated', { signedIn: kit.authenticationKey !== '' });
@@ -186,8 +219,6 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener((request: any, sender, sendResponse) => {
-    console.log('[Kurozora] ← message', request.action, { tab: sender.tab?.id, frame: sender.frameId });
-
     if (request.action === 'scrobble:identity' && sender.tab?.id !== undefined) {
       scrobbleSessions.handleIdentity(sender.tab.id, request.identity);
     }

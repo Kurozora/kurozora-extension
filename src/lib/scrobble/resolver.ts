@@ -110,6 +110,17 @@ export default class ScrobbleResolver {
   }
 
   /**
+   * The catalog title the series resolved to, or null when unresolved.
+   *
+   * @param seriesKey - The series key.
+   */
+  async animeTitleFor(seriesKey: string): Promise<string | null> {
+    const mappings = await this.#loadMappings();
+
+    return mappings[seriesKey]?.animeTitle ?? null;
+  }
+
+  /**
    * Forgets the mapping for the series.
    *
    * @param seriesKey - The series key to forget.
@@ -173,6 +184,9 @@ export default class ScrobbleResolver {
   #bestMatch(title: string, shows: any[]): any {
     const normalized = this.#normalize(title);
 
+    // A confident title match only; never fall back to the top search hit, so
+    // a title absent from the catalog resolves to nothing rather than the
+    // closest Meilisearch result.
     return shows.find((show) => {
       const attributes = show.attributes ?? {};
       const synonymTitles = Array.isArray(attributes.synonymTitles)
@@ -181,7 +195,7 @@ export default class ScrobbleResolver {
       const candidates = [attributes.title, attributes.originalTitle, ...synonymTitles];
 
       return candidates.some((candidate: string | null | undefined) => candidate && this.#normalize(candidate) === normalized);
-    }) ?? shows[0] ?? null;
+    }) ?? null;
   }
 
   /**

@@ -39,13 +39,27 @@
   let presenceImage = $state(0);
   /** The selected activity name. */
   let activityName = $state(0);
+  /** Whether tracking notifications are shown. */
+  let trackingNotifications = $state(false);
   /** Whether a sign-out request is in flight. */
   let signingOut = $state(false);
 
   onMount(() => {
     loadEnvironment();
+    loadNotifications();
     loadSettings();
   });
+
+  /** Restores the tracking-notification preference into the control. */
+  async function loadNotifications(): Promise<void> {
+    const stored = await browser.storage.local.get("trackingNotifications");
+    trackingNotifications = stored.trackingNotifications === true;
+  }
+
+  /** Persists whether tracking notifications are shown. */
+  async function saveNotifications(): Promise<void> {
+    await browser.storage.local.set({ trackingNotifications });
+  }
 
   /** Restores the persisted environment choice into the selector. */
   async function loadEnvironment(): Promise<void> {
@@ -171,6 +185,22 @@
         />
         <span class="w-10 text-right text-tint tabular-nums">{threshold}%</span>
       </span>
+    </label>
+  </section>
+
+  <section class="px-4 py-3 border-b border-primary">
+    <label
+      class="flex items-center justify-between gap-3 text-sm"
+      for="trackingNotifications"
+    >
+      <span>Tracking notifications</span>
+      <input
+        id="trackingNotifications"
+        type="checkbox"
+        class="h-4 w-4 accent-orange-500"
+        bind:checked={trackingNotifications}
+        onchange={saveNotifications}
+      />
     </label>
   </section>
 

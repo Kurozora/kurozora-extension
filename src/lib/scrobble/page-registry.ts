@@ -1,14 +1,20 @@
+import adn from './pages/adn';
 import an1me from './pages/an1me';
 import animeOdcinki from './pages/anime-odcinki';
 import animeonsen from './pages/animeonsen';
 import animepahe from './pages/animepahe';
 import appletv from './pages/appletv';
+import bilibili from './pages/bilibili';
 import crunchyroll from './pages/crunchyroll';
 import disneyplus from './pages/disneyplus';
 import hidive from './pages/hidive';
+import iqiyi from './pages/iqiyi';
 import jkanime from './pages/jkanime';
 import netflix from './pages/netflix';
+import niconico from './pages/niconico';
+import plex from './pages/plex';
 import witanime from './pages/witanime';
+import youtube from './pages/youtube';
 
 /**
  * The episode identity parsed from a page, before it is keyed to a series.
@@ -138,17 +144,23 @@ export interface PageModule {
  * The registered page modules, one per supported streaming site.
  */
 const pages: PageModule[] = [
+  adn,
   an1me,
   animeOdcinki,
   animeonsen,
   animepahe,
   appletv,
+  bilibili,
   crunchyroll,
   disneyplus,
   hidive,
+  iqiyi,
   jkanime,
   netflix,
+  niconico,
+  plex,
   witanime,
+  youtube,
 ];
 
 /**

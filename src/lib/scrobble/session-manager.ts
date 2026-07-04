@@ -30,9 +30,34 @@ export interface PlaybackEvent {
 }
 
 /**
+ * The catalog facts about the episode a session is tracking.
+ */
+export interface TrackingInfo {
+  /**
+   * The resolved anime's catalog title.
+   */
+  animeTitle: string;
+
+  /**
+   * The resolved episode number.
+   */
+  episode: number;
+
+  /**
+   * The resolved episode's title, when known.
+   */
+  episodeTitle: string | null;
+}
+
+/**
  * An active tab session.
  */
 interface Session {
+  /**
+   * The tab the session belongs to.
+   */
+  tabID: number;
+
   /**
    * The page identity playing in the tab.
    */
@@ -67,6 +92,11 @@ interface Session {
    * The server-resolved episode's Kurozora public id, once a scrobble resolves it.
    */
   episodePublicID: string | null;
+
+  /**
+   * The catalog facts shown for the session, once resolved.
+   */
+  tracking: TrackingInfo | null;
 }
 
 /**
@@ -99,16 +129,37 @@ export default class ScrobbleSessionManager {
   #onCommit: () => void;
 
   /**
+   * The callback invoked when a session begins tracking a resolved episode.
+   */
+  #onTracking: (tabID: number, info: TrackingInfo) => void;
+
+  /**
+   * Whether tracking notifications are enabled.
+   */
+  #notificationsEnabled = false;
+
+  /**
    * Create a new manager instance.
    *
    * @param kit - The kit performing the requests.
    * @param onCommit - Invoked after a play commits as watched.
+   * @param onTracking - Invoked with the catalog facts when tracking begins.
    */
-  constructor(kit: KurozoraKit, onCommit: () => void = () => {}) {
+  constructor(kit: KurozoraKit, onCommit: () => void = () => {}, onTracking: (tabID: number, info: TrackingInfo) => void = () => {}) {
     this.#kit = kit;
     this.#onCommit = onCommit;
+    this.#onTracking = onTracking;
     this.#resolver = new ScrobbleResolver(kit);
     this.#queue = new OfflineQueue(kit);
+  }
+
+  /**
+   * Enables or disables tracking notifications.
+   *
+   * @param enabled - Whether to notify when tracking begins.
+   */
+  setNotificationsEnabled(enabled: boolean): void {
+    this.#notificationsEnabled = enabled;
   }
 
   /**
@@ -136,6 +187,7 @@ export default class ScrobbleSessionManager {
     if (session?.identityKey !== this.#identityKey(identity)) {
       console.log('[Kurozora] session started for tab', tabID, identity.seriesKey, 'ep', identity.episode);
       this.#sessions.set(tabID, {
+        tabID: tabID,
         identity: identity,
         identityKey: this.#identityKey(identity),
         started: false,
@@ -143,6 +195,7 @@ export default class ScrobbleSessionManager {
         lastProgress: 0,
         lastPosition: null,
         episodePublicID: null,
+        tracking: null,
       });
     }
   }
@@ -249,10 +302,52 @@ export default class ScrobbleSessionManager {
 
       if (result.episodeIDs.length > 0) {
         session.episodePublicID = result.episodeIDs[0];
+
+        if (event === 'start' && this.#notificationsEnabled) {
+          void this.#notifyTracking(session);
+        }
       }
     } catch (error) {
       const apiError = error as { status?: number | null; message?: string };
       console.warn('[Kurozora]', event, 'failed', apiError.status, apiError.message);
+    }
+  }
+
+  /**
+   * Reports the catalog facts of the episode a resolved session is tracking.
+   *
+   * @param session - The tab session.
+   */
+  async #notifyTracking(session: Session): Promise<void> {
+    if (session.episodePublicID === null) {
+      return;
+    }
+
+    try {
+      let tracking = session.tracking;
+
+      if (tracking === null) {
+        const animeTitle = await this.#resolver.animeTitleFor(session.identity.seriesKey);
+
+        if (animeTitle === null) {
+          return;
+        }
+
+        const episode = (await this.#kit.episodes.views([session.episodePublicID])).data?.[0];
+
+        tracking = {
+          animeTitle: animeTitle,
+          episode: episode?.attributes?.number ?? session.identity.episode,
+          episodeTitle: episode?.attributes?.title ?? null,
+        };
+        session.tracking = tracking;
+      }
+
+      console.log('[Kurozora] tracking', tracking.animeTitle, tracking.episode);
+      this.#onTracking(session.tabID, tracking);
+    } catch (error) {
+      const apiError = error as { message?: string };
+      console.warn('[Kurozora] tracking notification failed', apiError.message);
     }
   }
 

@@ -30,6 +30,14 @@ export default defineContentScript({
     'https://*.disneyplus.com/*',
     'https://tv.apple.com/*',
     'https://*.hidive.com/*',
+    'https://*.youtube.com/*',
+    'https://*.bilibili.tv/*',
+    'https://*.iq.com/*',
+    'https://*.nicovideo.jp/*',
+    'https://app.plex.tv/*',
+    'https://*.animationdigitalnetwork.com/*',
+    'https://*.animationdigitalnetwork.fr/*',
+    'https://*.animationdigitalnetwork.de/*',
     'https://*.an1me.to/*',
     'https://*.anime-odcinki.pl/*',
     'https://*.lycoris.cafe/*',
@@ -57,31 +65,82 @@ export default defineContentScript({
     let lastReportedIdentity: string | null = null;
 
     /**
+     * Whether the identity was already cleared for the current non-watch page.
+     */
+    let identityCleared = false;
+
+    /**
+     * How long a retired identity stays suppressed after a navigation, in milliseconds.
+     */
+    const RETIRE_GRACE_MS = 5000;
+
+    /**
+     * The identity key retired by a navigation.
+     */
+    let retiredIdentity: string | null = null;
+
+    /**
+     * The time until which the retired identity stays suppressed.
+     */
+    let retiredUntil = 0;
+
+    /**
      * Episode metadata captured from the site's own network responses.
      */
     let capturedNetwork: CapturedEpisode | null = null;
 
     /**
-     * Reports the playing episode's identity to the background.
+     * Reports the playing episode's identity to the background, or clears it
+     * when nothing trackable is on the page.
      */
     function reportIdentity(): void {
-      if (page === null || !page.isWatchPage(location.href)) {
+      const identity = page !== null && page.isWatchPage(location.href)
+        ? page.identify(document, location.href, capturedNetwork)
+        : null;
+
+      if (identity === null) {
+        clearIdentity();
+
         return;
       }
 
-      const identity = page.identify(document, location.href, capturedNetwork);
-      const identityKey = identity === null ? null : JSON.stringify(identity);
+      const identityKey = JSON.stringify(identity);
+
+      // Right after a navigation the previous video's metadata lingers for a
+      // beat; ignore it until the new video's own metadata takes its place.
+      if (identityKey === retiredIdentity && Date.now() < retiredUntil) {
+        return;
+      }
 
       if (identityKey === lastReportedIdentity) {
         return;
       }
 
+      identityCleared = false;
       lastReportedIdentity = identityKey;
       console.log('[Kurozora] identity', identity);
 
       browser.runtime
         .sendMessage({ action: 'scrobble:identity', identity: identity })
         .catch((error) => console.warn('[Kurozora] identity send failed', error?.message));
+    }
+
+    /**
+     * Clears the tab's identity and tracking pill, once per non-watch page.
+     */
+    function clearIdentity(): void {
+      hideTrackingPill();
+
+      if (identityCleared) {
+        return;
+      }
+
+      identityCleared = true;
+      lastReportedIdentity = null;
+
+      browser.runtime
+        .sendMessage({ action: 'scrobble:identity', identity: null })
+        .catch((error) => console.warn('[Kurozora] identity clear failed', error?.message));
     }
 
     /**
@@ -98,7 +157,47 @@ export default defineContentScript({
         .catch((error) => console.warn('[Kurozora] playback send failed', error?.message));
     }
 
+    /**
+     * Shows or updates the pill naming the tracked anime and episode.
+     *
+     * @param animeTitle - The catalog anime title.
+     * @param episode - The episode number.
+     * @param episodeTitle - The episode's title, when known.
+     */
+    function showTrackingPill(animeTitle: string, episode: number, episodeTitle: string | null): void {
+      let pill = document.getElementById('kurozora-tracking-pill');
+
+      if (pill === null) {
+        pill = document.createElement('div');
+        pill.id = 'kurozora-tracking-pill';
+        pill.style.cssText = 'position:fixed;z-index:2147483647;bottom:16px;left:16px;max-width:320px;padding:8px 12px;border-radius:10px;border-left:3px solid #ff9300;background:rgba(28,28,30,.92);color:#fff;font:600 13px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.4);pointer-events:none;';
+        (document.body ?? document.documentElement).appendChild(pill);
+      }
+
+      const heading = document.createElement('div');
+      heading.textContent = 'Kurozora · Tracking';
+      heading.style.cssText = 'font:700 10px/1 system-ui;letter-spacing:.6px;text-transform:uppercase;color:#ff9300;margin-bottom:4px;';
+
+      const body = document.createElement('div');
+      body.textContent = animeTitle + ' · Episode ' + episode + (episodeTitle ? ': ' + episodeTitle : '');
+
+      pill.replaceChildren(heading, body);
+    }
+
+    /**
+     * Removes the tracking pill.
+     */
+    function hideTrackingPill(): void {
+      document.getElementById('kurozora-tracking-pill')?.remove();
+    }
+
     if (window === window.top) {
+      browser.runtime.onMessage.addListener((message: { action?: string; animeTitle?: string; episode?: number; episodeTitle?: string | null }) => {
+        if (message?.action === 'tracking:show' && typeof message.animeTitle === 'string') {
+          showTrackingPill(message.animeTitle, message.episode ?? 0, message.episodeTitle ?? null);
+        }
+      });
+
       window.addEventListener('message', (event) => {
         if (event.source !== window || page === null) {
           return;
@@ -127,19 +226,28 @@ export default defineContentScript({
 
       reportIdentity();
 
+      // `document.documentElement` never gets replaced across in-page
+      // navigations, unlike `<title>`, which single-page sites swap out and
+      // would orphan an observer bound to it.
       new MutationObserver(() => {
         if (location.href !== lastURL) {
           lastURL = location.href;
-          lastReportedIdentity = null;
+
+          // Stop the outgoing video's presence and drop its session at once,
+          // so the incoming video never inherits the previous identity. The
+          // retired key survives intermediate pages that report nothing.
+          if (tracker !== null) {
+            reportPlayback('pause', tracker.playbackState());
+          }
+
+          retiredIdentity = lastReportedIdentity ?? retiredIdentity;
+          retiredUntil = Date.now() + RETIRE_GRACE_MS;
           capturedNetwork = null;
+          clearIdentity();
         }
 
         reportIdentity();
-      }).observe(document.querySelector('head > title') ?? document.documentElement, {
-        subtree: true,
-        childList: true,
-        characterData: true,
-      });
+      }).observe(document.documentElement, { subtree: true, childList: true });
     }
 
     let tracker: VideoTracker | null = null;
@@ -166,23 +274,6 @@ export default defineContentScript({
       trackedVideo = video;
       tracker = new VideoTracker(video, reportPlayback);
       tracker.attach();
-
-      console.log('[Kurozora] video tracker attached', {
-        url: location.href,
-        paused: video.paused,
-        ended: video.ended,
-        readyState: video.readyState,
-        currentTime: video.currentTime,
-        duration: video.duration,
-      });
-
-      (['play', 'playing', 'pause', 'timeupdate', 'ended', 'loadeddata', 'emptied'] as const).forEach((event) => {
-        video.addEventListener(
-          event,
-          () => console.log('[Kurozora] video event', event, video.paused ? 'paused' : 'playing', `${video.currentTime.toFixed(0)}s`),
-          { once: event === 'timeupdate' },
-        );
-      });
 
       // A video already playing when the tracker attaches never fires `play`.
       if (!video.paused && !video.ended) {

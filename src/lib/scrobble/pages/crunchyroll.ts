@@ -56,17 +56,26 @@ const crunchyroll: PageModule = {
   },
 
   identify(pageDocument, _url, captured) {
+    const mediaTitle = pageDocument.querySelector('.erc-current-media-info h1')?.textContent ?? '';
+
+    if (/\b(trailer|teaser|pv)\b/i.test(mediaTitle)) {
+      return null;
+    }
+
     const identity = mergeIdentity(captured, identityFromJsonLd(pageDocument) ?? identityFromTitle(pageDocument));
 
     if (identity === null) {
       return null;
     }
 
-    const seriesIdentifier = captured?.seriesID ?? identity.title.toLowerCase();
+    const showTitle = pageDocument.querySelector('[data-t="show-title-link"]')?.textContent?.trim();
+    const title = showTitle && showTitle !== '' ? showTitle : identity.title;
+    const seriesIdentifier = captured?.seriesID ?? title.toLowerCase();
 
     return {
       seriesKey: this.name + ':' + seriesIdentifier,
       ...identity,
+      title: title,
       episode: identity.episode ?? 1,
     };
   },
