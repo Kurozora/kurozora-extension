@@ -7,6 +7,7 @@ export default defineContentScript({
     'https://www.crunchyroll.com/*',
     'https://static.crunchyroll.com/*',
     'https://*.hidive.com/*',
+    'https://video.unext.jp/*',
     'https://*.an1me.to/*',
     'https://*.anime-odcinki.pl/*',
     'https://*.animeonsen.xyz/*',

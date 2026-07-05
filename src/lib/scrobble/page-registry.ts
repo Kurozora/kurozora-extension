@@ -1,3 +1,4 @@
+import abema from './pages/abema';
 import adn from './pages/adn';
 import an1me from './pages/an1me';
 import animeOdcinki from './pages/anime-odcinki';
@@ -13,6 +14,7 @@ import jkanime from './pages/jkanime';
 import netflix from './pages/netflix';
 import niconico from './pages/niconico';
 import plex from './pages/plex';
+import unext from './pages/unext';
 import witanime from './pages/witanime';
 import youtube from './pages/youtube';
 
@@ -144,6 +146,7 @@ export interface PageModule {
  * The registered page modules, one per supported streaming site.
  */
 const pages: PageModule[] = [
+  abema,
   adn,
   an1me,
   animeOdcinki,
@@ -159,6 +162,7 @@ const pages: PageModule[] = [
   netflix,
   niconico,
   plex,
+  unext,
   witanime,
   youtube,
 ];
