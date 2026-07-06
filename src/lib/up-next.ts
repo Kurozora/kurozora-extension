@@ -28,6 +28,21 @@ export interface UpNextRow {
    * The "Episode N · title" secondary line.
    */
   episodeInfo: string;
+
+  /**
+   * The watch page URL to jump back to, when recorded.
+   */
+  resumeURL: string | null;
+
+  /**
+   * The resume position in seconds, when mid-episode.
+   */
+  resumePosition: number | null;
+
+  /**
+   * The provider the episode was last watched on, when catalogued.
+   */
+  watchedFromName: string | null;
 }
 
 /**
@@ -58,6 +73,9 @@ export async function loadUpNext(kit: KurozoraKit): Promise<UpNextRow[]> {
       posterURL: attributes.poster?.url ?? attributes.banner?.url ?? '',
       animeTitle: animeTitles[animeID] ?? attributes.title ?? '',
       episodeInfo: 'Episode ' + attributes.number + (attributes.title ? ' · ' + attributes.title : ''),
+      resumeURL: typeof attributes.watchedFromURL === 'string' ? attributes.watchedFromURL : null,
+      resumePosition: typeof attributes.resumePosition === 'number' ? attributes.resumePosition : null,
+      watchedFromName: typeof attributes.watchedFromName === 'string' ? attributes.watchedFromName : null,
     };
   });
 }
@@ -80,7 +98,10 @@ export function upNextRowsEqual(first: UpNextRow[], second: UpNextRow[]): boolea
       && row.href === other.href
       && row.posterURL === other.posterURL
       && row.animeTitle === other.animeTitle
-      && row.episodeInfo === other.episodeInfo;
+      && row.episodeInfo === other.episodeInfo
+      && row.resumeURL === other.resumeURL
+      && row.resumePosition === other.resumePosition
+      && row.watchedFromName === other.watchedFromName;
   });
 }
 

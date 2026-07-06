@@ -73,6 +73,11 @@ export default defineContentScript({
     let identityCleared = false;
 
     /**
+     * Whether an identity was reported since this content script loaded.
+     */
+    let hasReportedIdentity = false;
+
+    /**
      * How long a retired identity stays suppressed after a navigation, in milliseconds.
      */
     const RETIRE_GRACE_MS = 5000;
@@ -123,8 +128,12 @@ export default defineContentScript({
       lastReportedIdentity = identityKey;
       console.log('[Kurozora] identity', identity);
 
+      // The first report after a page load resets the tab's server-side session.
+      const fresh = !hasReportedIdentity;
+      hasReportedIdentity = true;
+
       browser.runtime
-        .sendMessage({ action: 'scrobble:identity', identity: identity })
+        .sendMessage({ action: 'scrobble:identity', identity: identity, fresh: fresh })
         .catch((error) => console.warn('[Kurozora] identity send failed', error?.message));
     }
 
@@ -194,6 +203,215 @@ export default defineContentScript({
       document.getElementById('kurozora-tracking-pill')?.remove();
     }
 
+    /**
+     * The resume position awaiting a video ready enough to seek.
+     */
+    let pendingSeek: number | null = null;
+
+    /**
+     * The readiness-poll timer for the pending seek.
+     */
+    let seekTimer: number | null = null;
+
+    /**
+     * Requests a resume seek, applying it once the video is ready.
+     *
+     * @param position - The resume position, in seconds.
+     */
+    function seekTo(position: number): void {
+      pendingSeek = position;
+      tryPendingSeek();
+      armSeek();
+    }
+
+    /**
+     * Seeks to the pending position when the video can accept it.
+     *
+     * Players such as AnimePahe don't load until the user presses play and can
+     * miss one-shot readiness events, so the seek is polled until it sticks
+     * rather than assuming a single ready moment; the position is held until
+     * then instead of being dropped onto an unready element.
+     */
+    function tryPendingSeek(): void {
+      if (pendingSeek === null) {
+        clearSeekTimer();
+
+        return;
+      }
+
+      const video = trackedVideo;
+
+      if (video === null || !video.isConnected) {
+        // Retried from attachToVideo once an element is present.
+        return;
+      }
+
+      const target = pendingSeek;
+
+      // Beyond the runtime, or already at the target: nothing left to do.
+      if ((Number.isFinite(video.duration) && video.duration > 0 && target > video.duration - 5)
+        || Math.abs(video.currentTime - target) < 2) {
+        pendingSeek = null;
+        clearSeekTimer();
+
+        return;
+      }
+
+      // Only seek once metadata is loaded; the next poll confirms it took.
+      if (video.readyState >= HTMLMediaElement.HAVE_METADATA && Number.isFinite(video.duration) && video.duration > 0) {
+        video.currentTime = target;
+      }
+    }
+
+    /**
+     * Starts polling to apply the pending seek, idempotently.
+     */
+    function armSeek(): void {
+      if (seekTimer !== null || pendingSeek === null) {
+        return;
+      }
+
+      let attempts = 0;
+
+      seekTimer = window.setInterval(() => {
+        attempts += 1;
+
+        if (pendingSeek === null || attempts > 80) {
+          clearSeekTimer();
+
+          return;
+        }
+
+        tryPendingSeek();
+      }, 250);
+    }
+
+    /**
+     * Stops the readiness poll.
+     */
+    function clearSeekTimer(): void {
+      if (seekTimer !== null) {
+        clearInterval(seekTimer);
+        seekTimer = null;
+      }
+    }
+
+    /**
+     * The resume position awaiting a player frame to host the prompt.
+     */
+    let pendingResumePosition: number | null = null;
+
+    /**
+     * Shows a resume button at the player's lower-right, above its controls.
+     *
+     * The button counts down five seconds and fades out; hovering it holds the
+     * countdown, and leaving restarts it.
+     *
+     * @param position - The resume position, in seconds.
+     */
+    function showResumePrompt(position: number): void {
+      const video = trackedVideo;
+      const host = video?.parentElement ?? null;
+
+      if (video === null || host === null) {
+        // Shown from attachToVideo once the player frame has its video.
+        pendingResumePosition = position;
+
+        return;
+      }
+
+      pendingResumePosition = null;
+      host.querySelector(':scope > .kurozora-resume-prompt')?.remove();
+
+      const prompt = document.createElement('button');
+      prompt.className = 'kurozora-resume-prompt';
+      prompt.textContent = 'Resume from ' + formatTime(position);
+      prompt.style.cssText = 'position:absolute;z-index:2147483646;right:16px;bottom:70px;padding:8px 14px;border:0;border-radius:8px;background:rgba(28,28,30,.92);color:#fff;font:700 13px/1 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.45);cursor:pointer;opacity:0;transition:opacity .25s ease-in-out;';
+
+      let fadeTimer: number | null = null;
+
+      const stopFade = (): void => {
+        if (fadeTimer !== null) {
+          clearTimeout(fadeTimer);
+          fadeTimer = null;
+        }
+      };
+
+      const startFade = (): void => {
+        stopFade();
+        fadeTimer = window.setTimeout(() => {
+          prompt.style.opacity = '0';
+          window.setTimeout(() => prompt.remove(), 300);
+        }, 5000);
+      };
+
+      prompt.addEventListener('mouseenter', () => {
+        stopFade();
+        prompt.style.opacity = '1';
+      });
+      prompt.addEventListener('mouseleave', startFade);
+      prompt.addEventListener('click', () => {
+        stopFade();
+        prompt.remove();
+
+        browser.runtime
+          .sendMessage({ action: 'resume:accept', position: position })
+          .catch((error) => console.warn('[Kurozora] resume accept failed', error?.message));
+      });
+
+      if (getComputedStyle(host).position === 'static') {
+        host.style.position = 'relative';
+      }
+
+      host.appendChild(prompt);
+
+      // Fade in, then begin the auto-hide countdown.
+      requestAnimationFrame(() => {
+        prompt.style.opacity = '1';
+        startFade();
+      });
+    }
+
+    /**
+     * Removes the resume prompt, if shown.
+     */
+    function hideResumePrompt(): void {
+      pendingResumePosition = null;
+      document.querySelector('.kurozora-resume-prompt')?.remove();
+    }
+
+    /**
+     * The `h:mm:ss` or `m:ss` display form of a duration.
+     *
+     * @param seconds - The duration, in seconds.
+     */
+    function formatTime(seconds: number): string {
+      const whole = Math.floor(seconds);
+      const hours = Math.floor(whole / 3600);
+      const minutes = Math.floor((whole % 3600) / 60);
+      const remainder = String(whole % 60).padStart(2, '0');
+
+      return hours > 0
+        ? hours + ':' + String(minutes).padStart(2, '0') + ':' + remainder
+        : minutes + ':' + remainder;
+    }
+
+    browser.runtime.onMessage.addListener((message: { action?: string; position?: number; automatic?: boolean }) => {
+      if (message?.action === 'resume:offer' && typeof message.position === 'number') {
+        if (message.automatic === true) {
+          seekTo(message.position);
+        } else {
+          // Shown in the frame that owns the video; frames without one stash
+          // it harmlessly and never surface it.
+          showResumePrompt(message.position);
+        }
+      }
+
+      if (message?.action === 'resume:seek' && typeof message.position === 'number') {
+        seekTo(message.position);
+      }
+    });
+
     if (window === window.top) {
       browser.runtime.onMessage.addListener((message: { action?: string; animeTitle?: string; episode?: number; episodeTitle?: string | null }) => {
         if (message?.action === 'tracking:show' && typeof message.animeTitle === 'string') {
@@ -246,6 +464,9 @@ export default defineContentScript({
           retiredIdentity = lastReportedIdentity ?? retiredIdentity;
           retiredUntil = Date.now() + RETIRE_GRACE_MS;
           capturedNetwork = null;
+          pendingSeek = null;
+          clearSeekTimer();
+          hideResumePrompt();
           clearIdentity();
         }
 
@@ -284,6 +505,14 @@ export default defineContentScript({
       }
 
       video.addEventListener('loadstart', () => tracker?.reset());
+
+      // A seek or resume prompt requested before this element existed still lands.
+      tryPendingSeek();
+      armSeek();
+
+      if (pendingResumePosition !== null) {
+        showResumePrompt(pendingResumePosition);
+      }
     }
 
     attachToVideo();

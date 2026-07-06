@@ -41,6 +41,8 @@
   let activityName = $state(0);
   /** Whether tracking notifications are shown. */
   let trackingNotifications = $state(false);
+  /** How a stored resume position is applied on a new session. */
+  let resumeMode = $state<"ask" | "auto">("ask");
   /** Whether a sign-out request is in flight. */
   let signingOut = $state(false);
 
@@ -52,8 +54,14 @@
 
   /** Restores the tracking-notification preference into the control. */
   async function loadNotifications(): Promise<void> {
-    const stored = await browser.storage.local.get("trackingNotifications");
+    const stored = await browser.storage.local.get(["trackingNotifications", "resumeMode"]);
     trackingNotifications = stored.trackingNotifications === true;
+    resumeMode = stored.resumeMode === "auto" ? "auto" : "ask";
+  }
+
+  /** Persists how a stored resume position is applied. */
+  async function saveResumeMode(): Promise<void> {
+    await browser.storage.local.set({ resumeMode });
   }
 
   /** Persists whether tracking notifications are shown. */
@@ -185,6 +193,24 @@
         />
         <span class="w-10 text-right text-tint tabular-nums">{threshold}%</span>
       </span>
+    </label>
+  </section>
+
+  <section class="px-4 py-3 border-b border-primary">
+    <label
+      class="flex items-center justify-between gap-3 text-sm"
+      for="resumeMode"
+    >
+      <span>Resume playback</span>
+      <select
+        id="resumeMode"
+        class="rounded-md px-2 py-1 text-xs shadow-sm bg-secondary text-primary border border-primary transition ease-in-out duration-150 focus:border-tint focus:ring-2 focus:ring-orange-500 focus:outline-none"
+        bind:value={resumeMode}
+        onchange={saveResumeMode}
+      >
+        <option value="ask">Ask every time</option>
+        <option value="auto">Automatic</option>
+      </select>
     </label>
   </section>
 

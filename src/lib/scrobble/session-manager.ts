@@ -97,6 +97,16 @@ interface Session {
    * The catalog facts shown for the session, once resolved.
    */
   tracking: TrackingInfo | null;
+
+  /**
+   * The watch page URL, recorded for jump-back.
+   */
+  url: string | null;
+
+  /**
+   * Whether a resume point was already offered for the session.
+   */
+  resumeOffered: boolean;
 }
 
 /**
@@ -134,6 +144,11 @@ export default class ScrobbleSessionManager {
   #onTracking: (tabID: number, info: TrackingInfo) => void;
 
   /**
+   * The callback invoked when the server reports a resume point for a fresh session.
+   */
+  #onResume: (tabID: number, position: number) => void;
+
+  /**
    * Whether tracking notifications are enabled.
    */
   #notificationsEnabled = false;
@@ -144,11 +159,13 @@ export default class ScrobbleSessionManager {
    * @param kit - The kit performing the requests.
    * @param onCommit - Invoked after a play commits as watched.
    * @param onTracking - Invoked with the catalog facts when tracking begins.
+   * @param onResume - Invoked with the server's resume point when a fresh session starts.
    */
-  constructor(kit: KurozoraKit, onCommit: () => void = () => {}, onTracking: (tabID: number, info: TrackingInfo) => void = () => {}) {
+  constructor(kit: KurozoraKit, onCommit: () => void = () => {}, onTracking: (tabID: number, info: TrackingInfo) => void = () => {}, onResume: (tabID: number, position: number) => void = () => {}) {
     this.#kit = kit;
     this.#onCommit = onCommit;
     this.#onTracking = onTracking;
+    this.#onResume = onResume;
     this.#resolver = new ScrobbleResolver(kit);
     this.#queue = new OfflineQueue(kit);
   }
@@ -173,16 +190,24 @@ export default class ScrobbleSessionManager {
    * Records the identity playing in a tab.
    *
    * @param tabID - The reporting tab.
-   * @param identity - The page identity, or null when unreadable.
+   * @param identity - The page identity.
+   * @param url - The tab's watch page URL.
+   * @param fresh - Whether the content script just loaded.
    */
-  handleIdentity(tabID: number, identity: PageIdentity | null): void {
-    const session = this.#sessions.get(tabID);
-
+  handleIdentity(tabID: number, identity: PageIdentity | null, url: string | null = null, fresh = false): void {
     if (identity === null) {
       this.#sessions.delete(tabID);
 
       return;
     }
+
+    // A fresh page load discards the persisted session, so the resume offer
+    // and player decorations fire again instead of once per extension load.
+    if (fresh) {
+      this.#sessions.delete(tabID);
+    }
+
+    const session = this.#sessions.get(tabID);
 
     if (session?.identityKey !== this.#identityKey(identity)) {
       console.log('[Kurozora] session started for tab', tabID, identity.seriesKey, 'ep', identity.episode);
@@ -196,7 +221,11 @@ export default class ScrobbleSessionManager {
         lastPosition: null,
         episodePublicID: null,
         tracking: null,
+        url: url,
+        resumeOffered: false,
       });
+    } else if (session !== undefined && url !== null) {
+      session.url = url;
     }
   }
 
@@ -307,6 +336,18 @@ export default class ScrobbleSessionManager {
           void this.#notifyTracking(session);
         }
       }
+
+      if (event === 'start' && !session.resumeOffered) {
+        session.resumeOffered = true;
+
+        // The server surfaces the pre-wipe position on a fresh session; a
+        // short remainder isn't worth interrupting for.
+        const previousPosition = result.attributes?.previousPosition;
+
+        if (typeof previousPosition === 'number' && previousPosition > 30) {
+          this.#onResume(session.tabID, previousPosition);
+        }
+      }
     } catch (error) {
       const apiError = error as { status?: number | null; message?: string };
       console.warn('[Kurozora]', event, 'failed', apiError.status, apiError.message);
@@ -414,6 +455,7 @@ export default class ScrobbleSessionManager {
       ...identityPayload,
       progress: Math.round(playback.progress * 10) / 10,
       ...(playback.position != null ? { position: Math.floor(playback.position) } : {}),
+      ...(session.url !== null ? { url: session.url } : {}),
     };
   }
 

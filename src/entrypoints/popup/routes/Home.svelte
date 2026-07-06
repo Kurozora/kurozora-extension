@@ -47,6 +47,25 @@
   onDestroy(() => {
     browser.runtime.onMessage.removeListener(handleMessage);
   });
+
+  /** Reopens a row's watch page, reusing an existing tab on that site. */
+  function continueWatching(event: MouseEvent, row: UpNextRow): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    browser.runtime
+      .sendMessage({ action: "popup:continueWatching", url: row.resumeURL })
+      .catch(() => {});
+    window.close();
+  }
+
+  /** The `m:ss` display form of a resume position. */
+  function formatPosition(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const remainder = String(Math.floor(seconds % 60)).padStart(2, "0");
+
+    return minutes + ":" + remainder;
+  }
 </script>
 
 <div class="flex flex-col">
@@ -80,10 +99,19 @@
               src={row.posterURL}
               alt=""
             />
-            <span class="flex flex-col min-w-0">
+            <span class="flex flex-col min-w-0 flex-1">
               <span class="text-sm font-semibold truncate">{row.animeTitle}</span>
               <span class="text-xs text-secondary truncate">{row.episodeInfo}</span>
             </span>
+            {#if row.resumeURL}
+              <button
+                class="shrink-0 rounded-md px-2 py-1 text-xs font-bold bg-orange-500 text-white transition ease-in-out duration-150 hover:bg-orange-400"
+                title={"Continue" + (row.watchedFromName ? " on " + row.watchedFromName : "") + (row.resumePosition ? " from " + formatPosition(row.resumePosition) : "")}
+                onclick={(event) => continueWatching(event, row)}
+              >
+                ▶{row.resumePosition ? " " + formatPosition(row.resumePosition) : ""}
+              </button>
+            {/if}
           </a>
         </li>
       {/each}

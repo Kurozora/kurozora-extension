@@ -23,7 +23,7 @@ export default defineBackground(() => {
 
   const scrobbleSessions = new ScrobbleSessionManager(kit, () => {
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
-  }, showTrackingNotification);
+  }, showTrackingNotification, offerResume);
 
   /**
    * Shows an in-page toast of the catalog anime and episode a session is tracking.
@@ -40,6 +40,65 @@ export default defineBackground(() => {
         episodeTitle: info.episodeTitle,
       })
       .catch((error: { message?: string }) => console.warn('[Kurozora] tracking toast failed', error?.message));
+  }
+
+  /**
+   * Offers the tab a resume point, honoring the resume-playback setting.
+   *
+   * @param tabID - The tab playing the episode.
+   * @param position - The resume position, in seconds.
+   */
+  function offerResume(tabID: number, position: number): void {
+    browser.storage.local
+      .get('resumeMode')
+      .then((stored) => {
+        const automatic = stored.resumeMode === 'auto';
+
+        return browser.tabs.sendMessage(tabID, { action: 'resume:offer', position: position, automatic: automatic });
+      })
+      .catch((error: { message?: string }) => console.warn('[Kurozora] resume offer failed', error?.message));
+  }
+
+  /**
+   * Opens a watch URL, reusing a tab already on that site when one exists.
+   *
+   * @param url - The watch page URL.
+   */
+  async function continueWatching(url: string): Promise<void> {
+    const site = siteDomain(new URL(url).hostname);
+    const tabs = await browser.tabs.query({});
+    const existing = tabs.find((tab) => {
+      if (tab.url === undefined || tab.url === '') {
+        return false;
+      }
+
+      try {
+        return siteDomain(new URL(tab.url).hostname) === site;
+      } catch {
+        return false;
+      }
+    });
+
+    if (existing?.id !== undefined) {
+      await browser.tabs.update(existing.id, { url: url, active: true });
+
+      if (existing.windowId !== undefined) {
+        await browser.windows.update(existing.windowId, { focused: true });
+      }
+
+      return;
+    }
+
+    await browser.tabs.create({ url: url });
+  }
+
+  /**
+   * The registrable domain of a hostname, e.g. `www.crunchyroll.com` → `crunchyroll.com`.
+   *
+   * @param hostname - The hostname to reduce.
+   */
+  function siteDomain(hostname: string): string {
+    return hostname.split('.').slice(-2).join('.');
   }
 
   /**
@@ -220,7 +279,18 @@ export default defineBackground(() => {
 
   browser.runtime.onMessage.addListener((request: any, sender, sendResponse) => {
     if (request.action === 'scrobble:identity' && sender.tab?.id !== undefined) {
-      scrobbleSessions.handleIdentity(sender.tab.id, request.identity);
+      scrobbleSessions.handleIdentity(sender.tab.id, request.identity, sender.tab.url ?? null, request.fresh === true);
+    }
+
+    if (request.action === 'resume:accept' && sender.tab?.id !== undefined) {
+      browser.tabs
+        .sendMessage(sender.tab.id, { action: 'resume:seek', position: request.position })
+        .catch((error: { message?: string }) => console.warn('[Kurozora] resume seek failed', error?.message));
+    }
+
+    if (request.action === 'popup:continueWatching' && typeof request.url === 'string') {
+      continueWatching(request.url)
+        .catch((error: { message?: string }) => console.warn('[Kurozora] continue watching failed', error?.message));
     }
 
     if (request.action === 'scrobble:playback' && sender.tab?.id !== undefined) {
