@@ -21,6 +21,79 @@ export default defineBackground(() => {
 
   const providers = new Map<string, { name: string; logo?: string }>();
 
+  /**
+   * Whether incognito suspends all tracking.
+   */
+  let incognitoEnabled = false;
+
+  /**
+   * The site domains tracking is disabled on.
+   */
+  let blockedDomains: string[] = [];
+
+  /**
+   * The streaming site domains scrobbling has run on.
+   */
+  const visitedDomains = new Set<string>();
+
+  /**
+   * Whether tracking is suspended globally or for the reporting tab's site.
+   *
+   * @param tabURL - The reporting tab's URL, when known.
+   */
+  function trackingSuspended(tabURL: string | undefined): boolean {
+    if (incognitoEnabled) {
+      return true;
+    }
+
+    if (tabURL === undefined || tabURL === '') {
+      return false;
+    }
+
+    try {
+      return blockedDomains.includes(siteDomain(new URL(tabURL).hostname));
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Restores the incognito and per-site tracking preferences.
+   */
+  async function restoreTrackingRules(): Promise<void> {
+    const stored = await browser.storage.local.get(['incognito', 'blockedDomains', 'visitedDomains']);
+
+    incognitoEnabled = stored.incognito === true;
+    blockedDomains = Array.isArray(stored.blockedDomains) ? stored.blockedDomains : [];
+
+    if (Array.isArray(stored.visitedDomains)) {
+      stored.visitedDomains.forEach((domain: string) => visitedDomains.add(domain));
+    }
+  }
+
+  /**
+   * Records a streaming domain scrobbling has run on, for the sites screen.
+   *
+   * @param tabURL - The reporting tab's URL.
+   */
+  async function recordVisitedDomain(tabURL: string | undefined): Promise<void> {
+    if (tabURL === undefined || tabURL === '') {
+      return;
+    }
+
+    try {
+      const domain = siteDomain(new URL(tabURL).hostname);
+
+      if (visitedDomains.has(domain)) {
+        return;
+      }
+
+      visitedDomains.add(domain);
+      await browser.storage.local.set({ visitedDomains: [...visitedDomains] });
+    } catch {
+    }
+  }
+
   const scrobbleSessions = new ScrobbleSessionManager(kit, () => {
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
   }, showTrackingNotification, offerResume);
@@ -114,6 +187,7 @@ export default defineBackground(() => {
     .then(() => kit.services.restoreAuthenticationKey())
     .then(() => scrobbleSessions.replayQueue())
     .then(() => restoreNotificationSetting())
+    .then(() => restoreTrackingRules())
     .then(() => {
       console.log('[Kurozora] ready', { endpoint: kit.apiEndpoint.baseURL, signedIn: kit.authenticationKey !== '' });
 
@@ -264,6 +338,22 @@ export default defineBackground(() => {
       scrobbleSessions.setNotificationsEnabled(changes.trackingNotifications.newValue === true);
     }
 
+    if (changes.incognito !== undefined) {
+      incognitoEnabled = changes.incognito.newValue === true;
+
+      // Silence the live presence of every active session at once, so a
+      // share-screen doesn't keep broadcasting until the next pause.
+      if (incognitoEnabled) {
+        scrobbleSessions.activeTabIDs().forEach((tabID) => {
+          whisperPosition(tabID, 'pause', { progress: 0, position: 0, duration: 0 });
+        });
+      }
+    }
+
+    if (changes.blockedDomains !== undefined) {
+      blockedDomains = Array.isArray(changes.blockedDomains.newValue) ? changes.blockedDomains.newValue : [];
+    }
+
     if (changes[KKServices.STORAGE_KEY] !== undefined) {
       kit.authenticationKey = (changes[KKServices.STORAGE_KEY].newValue as string | undefined) ?? '';
       console.log('[Kurozora] session updated', { signedIn: kit.authenticationKey !== '' });
@@ -279,7 +369,12 @@ export default defineBackground(() => {
 
   browser.runtime.onMessage.addListener((request: any, sender, sendResponse) => {
     if (request.action === 'scrobble:identity' && sender.tab?.id !== undefined) {
-      scrobbleSessions.handleIdentity(sender.tab.id, request.identity, sender.tab.url ?? null, request.fresh === true);
+      if (trackingSuspended(sender.tab.url)) {
+        scrobbleSessions.handleIdentity(sender.tab.id, null);
+      } else {
+        recordVisitedDomain(sender.tab.url).catch(() => {});
+        scrobbleSessions.handleIdentity(sender.tab.id, request.identity, sender.tab.url ?? null, request.fresh === true);
+      }
     }
 
     if (request.action === 'resume:accept' && sender.tab?.id !== undefined) {
@@ -294,6 +389,10 @@ export default defineBackground(() => {
     }
 
     if (request.action === 'scrobble:playback' && sender.tab?.id !== undefined) {
+      if (trackingSuspended(sender.tab.url)) {
+        return;
+      }
+
       const tabID = sender.tab.id;
       const event = request.event as string;
       const playback = request.playback as PlaybackState;
@@ -320,6 +419,16 @@ export default defineBackground(() => {
 
     if (request.action === 'popup:refreshUpNext') {
       kitReady
+        .then(() => refreshUpNext())
+        .then((rows) => sendResponse({ rows: rows }))
+        .catch((error: { message?: string }) => sendResponse({ rows: upNextCache ?? [], error: error?.message ?? 'Please try again.' }));
+
+      return true;
+    }
+
+    if (request.action === 'popup:clearScrobble' && typeof request.episodeID === 'string') {
+      kitReady
+        .then(() => kit.episodes.clearWatched(request.episodeID))
         .then(() => refreshUpNext())
         .then((rows) => sendResponse({ rows: rows }))
         .catch((error: { message?: string }) => sendResponse({ rows: upNextCache ?? [], error: error?.message ?? 'Please try again.' }));

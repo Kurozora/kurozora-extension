@@ -283,6 +283,13 @@ export default class ScrobbleSessionManager {
   }
 
   /**
+   * The tabs holding an active session.
+   */
+  activeTabIDs(): number[] {
+    return [...this.#sessions.keys()];
+  }
+
+  /**
    * The server-resolved episode's Kurozora public id for a tab, when known.
    *
    * @param tabID - The tab to inspect.

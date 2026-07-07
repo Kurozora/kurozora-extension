@@ -230,6 +230,16 @@
     </label>
   </section>
 
+  <section class="px-4 py-3 border-b border-primary">
+    <button
+      class="flex w-full items-center justify-between gap-3 text-sm transition ease-in-out duration-150 hover:text-tint"
+      onclick={() => push("/sites")}
+    >
+      <span>Sites</span>
+      <span class="text-secondary">→</span>
+    </button>
+  </section>
+
   <section class="flex flex-col gap-3 px-4 py-3 border-b border-primary">
     <label class="flex items-center justify-between gap-3 text-sm" for="discordEnabled">
       <span>Discord Rich Presence</span>
