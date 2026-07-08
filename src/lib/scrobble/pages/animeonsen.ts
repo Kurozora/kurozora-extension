@@ -68,6 +68,25 @@ const animeonsen: PageModule = {
       ...identity,
     };
   },
+
+  episodeCells(pageDocument) {
+    const cells: { element: HTMLElement; episode: number }[] = [];
+
+    // AnimeOnsen switches episodes inside its SPA, so cells are list entries
+    // rather than per-episode URLs. Provisional selectors until verified live.
+    pageDocument.querySelectorAll<HTMLElement>('[data-episode-number], .ao-episodes-list a, .ao-episodes-list button, .ao-episode').forEach((element) => {
+      const label = element.getAttribute('data-episode-number') ?? element.textContent ?? '';
+      const marker = label.match(/\d+/);
+
+      if (marker === null) {
+        return;
+      }
+
+      cells.push({ element: element, episode: parseInt(marker[0], 10) });
+    });
+
+    return cells;
+  },
 };
 
 export default animeonsen;

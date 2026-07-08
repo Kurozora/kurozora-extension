@@ -26,6 +26,25 @@ const animepahe: PageModule = {
       ...identity,
     };
   },
+
+  episodeCells(pageDocument) {
+    const cells: { element: HTMLElement; episode: number }[] = [];
+
+    // Episode entries link to "/play/{anime}/{episode}" and label themselves
+    // with the episode number; best-effort until verified against the live grid.
+    pageDocument.querySelectorAll<HTMLAnchorElement>('a[href*="/play/"]').forEach((anchor) => {
+      const label = anchor.getAttribute('title') ?? anchor.textContent ?? '';
+      const marker = label.match(/(?:ep(?:isode)?\.?\s*)?(\d+)/i);
+
+      if (marker === null) {
+        return;
+      }
+
+      cells.push({ element: anchor, episode: parseInt(marker[1], 10) });
+    });
+
+    return cells;
+  },
 };
 
 export default animepahe;

@@ -61,10 +61,13 @@ export default defineBackground(() => {
    * Restores the incognito and per-site tracking preferences.
    */
   async function restoreTrackingRules(): Promise<void> {
-    const stored = await browser.storage.local.get(['incognito', 'blockedDomains', 'visitedDomains']);
+    const stored = await browser.storage.local.get(['incognito', 'blockedDomains', 'visitedDomains', 'dynamicTitle', 'fillerBadges', 'accessibleBadges']);
 
     incognitoEnabled = stored.incognito === true;
     blockedDomains = Array.isArray(stored.blockedDomains) ? stored.blockedDomains : [];
+    dynamicTitleEnabled = stored.dynamicTitle !== false;
+    fillerBadgesEnabled = stored.fillerBadges !== false;
+    accessibleBadgesEnabled = stored.accessibleBadges === true;
 
     if (Array.isArray(stored.visitedDomains)) {
       stored.visitedDomains.forEach((domain: string) => visitedDomains.add(domain));
@@ -96,7 +99,109 @@ export default defineBackground(() => {
 
   const scrobbleSessions = new ScrobbleSessionManager(kit, () => {
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
-  }, showTrackingNotification, offerResume);
+  }, showTrackingNotification, offerResume, (tabID, episodePublicID) => {
+    sendEpisodeGrid(tabID, episodePublicID)
+      .catch((error: { message?: string }) => console.warn('[Kurozora] episode grid failed', error?.message));
+  });
+
+  /**
+   * Whether the tab title is rewritten with live playback.
+   */
+  let dynamicTitleEnabled = true;
+
+  /**
+   * Whether filler badges are injected onto site episode grids.
+   */
+  let fillerBadgesEnabled = true;
+
+  /**
+   * Whether badges distinguish fillers without relying on color.
+   */
+  let accessibleBadgesEnabled = false;
+
+  /**
+   * The per-season grid payloads already fetched, keyed by season id.
+   */
+  const gridCache = new Map<string, { number: number; fillerKind: number; isWatched: boolean }[]>();
+
+  /**
+   * Sends the tab the season's episode facts for on-page badges.
+   *
+   * @param tabID - The tab playing the episode.
+   * @param episodePublicID - The playing episode's public id.
+   */
+  async function sendEpisodeGrid(tabID: number, episodePublicID: string): Promise<void> {
+    if (!fillerBadgesEnabled) {
+      return;
+    }
+
+    const episode = (await kit.episodes.views([episodePublicID])).data?.[0];
+    const seasonID: string | undefined = episode?.relationships?.seasons?.data?.[0]?.id;
+
+    if (seasonID === undefined) {
+      return;
+    }
+
+    let grid = gridCache.get(seasonID);
+
+    if (grid === undefined) {
+      grid = await loadSeasonGrid(seasonID);
+      gridCache.set(seasonID, grid);
+    }
+
+    await browser.tabs.sendMessage(
+      tabID,
+      { action: 'grid:update', episodes: grid, accessible: accessibleBadgesEnabled },
+      { frameId: 0 },
+    );
+  }
+
+  /**
+   * The season's episode facts, loaded page by page.
+   *
+   * @param seasonID - The season id.
+   */
+  async function loadSeasonGrid(seasonID: string): Promise<{ number: number; fillerKind: number; isWatched: boolean }[]> {
+    const identities = (await kit.seasons.episodes(seasonID)).data ?? [];
+    const episodeIDs: string[] = identities.map((identity: { id: string }) => identity.id);
+    const grid: { number: number; fillerKind: number; isWatched: boolean }[] = [];
+
+    for (let index = 0; index < episodeIDs.length; index += 25) {
+      const episodes = (await kit.episodes.views(episodeIDs.slice(index, index + 25))).data ?? [];
+
+      episodes.forEach((episode: any) => {
+        const attributes = episode.attributes ?? {};
+
+        if (typeof attributes.number === 'number') {
+          grid.push({
+            number: attributes.number,
+            // `fillerKind` supersedes the deprecated `isFiller`; derive it while
+            // servers without the new field are still in rotation.
+            fillerKind: typeof attributes.fillerKind === 'number'
+              ? attributes.fillerKind
+              : (attributes.isFiller === true ? 1 : 0),
+            isWatched: attributes.isWatched === true,
+          });
+        }
+      });
+    }
+
+    return grid;
+  }
+
+  /**
+   * Re-sends the episode grid to every actively tracking tab.
+   */
+  function resendActiveGrids(): void {
+    for (const tabID of scrobbleSessions.activeTabIDs()) {
+      const episodePublicID = scrobbleSessions.episodePublicIDFor(tabID);
+
+      if (episodePublicID != null) {
+        sendEpisodeGrid(tabID, episodePublicID)
+          .catch((error: { message?: string }) => console.warn('[Kurozora] episode grid failed', error?.message));
+      }
+    }
+  }
 
   /**
    * Shows an in-page toast of the catalog anime and episode a session is tracking.
@@ -111,6 +216,7 @@ export default defineBackground(() => {
         animeTitle: info.animeTitle,
         episode: info.episode,
         episodeTitle: info.episodeTitle,
+        isFiller: info.isFiller,
       })
       .catch((error: { message?: string }) => console.warn('[Kurozora] tracking toast failed', error?.message));
   }
@@ -287,6 +393,36 @@ export default defineBackground(() => {
   }
 
   /**
+   * Sends the tab a live playback summary for its title, when enabled.
+   *
+   * @param tabID - The tab the playback came from.
+   * @param event - The playback event name.
+   * @param playback - The playback state.
+   */
+  function updateTabTitle(tabID: number, event: string, playback: PlaybackState): void {
+    if (!dynamicTitleEnabled) {
+      return;
+    }
+
+    const identity = scrobbleSessions.identityFor(tabID);
+
+    if (identity === null) {
+      return;
+    }
+
+    browser.tabs
+      .sendMessage(tabID, {
+        action: 'title:update',
+        title: identity.title,
+        episode: identity.episode,
+        position: playback.position,
+        duration: playback.duration || identity.duration || 0,
+        playing: event === 'play' || event === 'progress',
+      }, { frameId: 0 })
+      .catch(() => {});
+  }
+
+  /**
    * Reloads the up-next cache and pushes it to the popup when it changed.
    *
    * @returns The refreshed rows.
@@ -354,6 +490,24 @@ export default defineBackground(() => {
       blockedDomains = Array.isArray(changes.blockedDomains.newValue) ? changes.blockedDomains.newValue : [];
     }
 
+    if (changes.dynamicTitle !== undefined) {
+      dynamicTitleEnabled = changes.dynamicTitle.newValue !== false;
+    }
+
+    if (changes.fillerBadges !== undefined) {
+      fillerBadgesEnabled = changes.fillerBadges.newValue !== false;
+    }
+
+    if (changes.accessibleBadges !== undefined) {
+      accessibleBadgesEnabled = changes.accessibleBadges.newValue === true;
+    }
+
+    // A badge toggle needs the grid re-sent to tabs that never received it;
+    // the flags above are already current for the re-send.
+    if (changes.fillerBadges !== undefined || changes.accessibleBadges !== undefined) {
+      resendActiveGrids();
+    }
+
     if (changes[KKServices.STORAGE_KEY] !== undefined) {
       kit.authenticationKey = (changes[KKServices.STORAGE_KEY].newValue as string | undefined) ?? '';
       console.log('[Kurozora] session updated', { signedIn: kit.authenticationKey !== '' });
@@ -399,6 +553,7 @@ export default defineBackground(() => {
 
       kitReady.then(async () => {
         whisperPosition(tabID, event, playback, sender.tab);
+        updateTabTitle(tabID, event, playback);
 
         if (event !== 'progress') {
           await scrobbleSessions.handlePlayback(tabID, { event: event, ...playback });

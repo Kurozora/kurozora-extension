@@ -79,6 +79,25 @@ const crunchyroll: PageModule = {
       episode: identity.episode ?? 1,
     };
   },
+
+  episodeCells(pageDocument) {
+    const cells: { element: HTMLElement; episode: number }[] = [];
+
+    // Episode cards on series pages and in the watch page's playlist rail
+    // both link to /watch/ and label themselves "S1 E5 - Episode Title".
+    pageDocument.querySelectorAll<HTMLElement>('a[href*="/watch/"]').forEach((anchor) => {
+      const label = anchor.getAttribute('title') ?? anchor.textContent ?? '';
+      const marker = label.match(/\bE(\d+)\b/) ?? label.match(/Episode\s+(\d+)/i);
+
+      if (marker === null) {
+        return;
+      }
+
+      cells.push({ element: anchor, episode: parseInt(marker[1], 10) });
+    });
+
+    return cells;
+  },
 };
 
 export default crunchyroll;

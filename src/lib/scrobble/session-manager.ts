@@ -47,6 +47,11 @@ export interface TrackingInfo {
    * The resolved episode's title, when known.
    */
   episodeTitle: string | null;
+
+  /**
+   * Whether the resolved episode is a filler.
+   */
+  isFiller: boolean;
 }
 
 /**
@@ -149,6 +154,11 @@ export default class ScrobbleSessionManager {
   #onResume: (tabID: number, position: number) => void;
 
   /**
+   * The callback invoked when a session's episode resolves to a catalog id.
+   */
+  #onEpisodeResolved: (tabID: number, episodePublicID: string) => void;
+
+  /**
    * Whether tracking notifications are enabled.
    */
   #notificationsEnabled = false;
@@ -160,12 +170,14 @@ export default class ScrobbleSessionManager {
    * @param onCommit - Invoked after a play commits as watched.
    * @param onTracking - Invoked with the catalog facts when tracking begins.
    * @param onResume - Invoked with the server's resume point when a fresh session starts.
+   * @param onEpisodeResolved - Invoked when a session's episode resolves to a catalog id.
    */
-  constructor(kit: KurozoraKit, onCommit: () => void = () => {}, onTracking: (tabID: number, info: TrackingInfo) => void = () => {}, onResume: (tabID: number, position: number) => void = () => {}) {
+  constructor(kit: KurozoraKit, onCommit: () => void = () => {}, onTracking: (tabID: number, info: TrackingInfo) => void = () => {}, onResume: (tabID: number, position: number) => void = () => {}, onEpisodeResolved: (tabID: number, episodePublicID: string) => void = () => {}) {
     this.#kit = kit;
     this.#onCommit = onCommit;
     this.#onTracking = onTracking;
     this.#onResume = onResume;
+    this.#onEpisodeResolved = onEpisodeResolved;
     this.#resolver = new ScrobbleResolver(kit);
     this.#queue = new OfflineQueue(kit);
   }
@@ -337,7 +349,12 @@ export default class ScrobbleSessionManager {
       console.log('[Kurozora]', event, 'sent', result.attributes);
 
       if (result.episodeIDs.length > 0) {
+        const isFreshlyResolved = session.episodePublicID === null;
         session.episodePublicID = result.episodeIDs[0];
+
+        if (isFreshlyResolved) {
+          this.#onEpisodeResolved(session.tabID, session.episodePublicID);
+        }
 
         if (event === 'start' && this.#notificationsEnabled) {
           void this.#notifyTracking(session);
@@ -387,6 +404,7 @@ export default class ScrobbleSessionManager {
           animeTitle: animeTitle,
           episode: episode?.attributes?.number ?? session.identity.episode,
           episodeTitle: episode?.attributes?.title ?? null,
+          isFiller: episode?.attributes?.isFiller === true,
         };
         session.tracking = tracking;
       }
@@ -421,8 +439,13 @@ export default class ScrobbleSessionManager {
       session.completed = true;
 
       if (result.episodeIDs.length > 0) {
+        const isFreshlyResolved = session.episodePublicID === null;
         session.episodePublicID = result.episodeIDs[0];
         await this.#resolver.cacheEpisode(session.identity, result.episodeIDs[0]);
+
+        if (isFreshlyResolved) {
+          this.#onEpisodeResolved(session.tabID, session.episodePublicID);
+        }
       }
 
       await this.#queue.replay();

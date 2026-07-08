@@ -43,6 +43,12 @@
   let trackingNotifications = $state(false);
   /** How a stored resume position is applied on a new session. */
   let resumeMode = $state<"ask" | "auto">("ask");
+  /** Whether the tab title is rewritten with live playback. */
+  let dynamicTitle = $state(true);
+  /** Whether filler badges are injected onto site episode grids. */
+  let fillerBadges = $state(true);
+  /** Whether badges distinguish fillers without relying on color. */
+  let accessibleBadges = $state(false);
   /** Whether a sign-out request is in flight. */
   let signingOut = $state(false);
 
@@ -54,14 +60,32 @@
 
   /** Restores the tracking-notification preference into the control. */
   async function loadNotifications(): Promise<void> {
-    const stored = await browser.storage.local.get(["trackingNotifications", "resumeMode"]);
+    const stored = await browser.storage.local.get(["trackingNotifications", "resumeMode", "dynamicTitle", "fillerBadges", "accessibleBadges"]);
     trackingNotifications = stored.trackingNotifications === true;
     resumeMode = stored.resumeMode === "auto" ? "auto" : "ask";
+    dynamicTitle = stored.dynamicTitle !== false;
+    fillerBadges = stored.fillerBadges !== false;
+    accessibleBadges = stored.accessibleBadges === true;
   }
 
   /** Persists how a stored resume position is applied. */
   async function saveResumeMode(): Promise<void> {
     await browser.storage.local.set({ resumeMode });
+  }
+
+  /** Persists whether the tab title is rewritten with live playback. */
+  async function saveDynamicTitle(): Promise<void> {
+    await browser.storage.local.set({ dynamicTitle });
+  }
+
+  /** Persists whether filler badges are injected onto site episode grids. */
+  async function saveFillerBadges(): Promise<void> {
+    await browser.storage.local.set({ fillerBadges });
+  }
+
+  /** Persists whether badges distinguish fillers without relying on color. */
+  async function saveAccessibleBadges(): Promise<void> {
+    await browser.storage.local.set({ accessibleBadges });
   }
 
   /** Persists whether tracking notifications are shown. */
@@ -238,6 +262,42 @@
       <span>Sites</span>
       <span class="text-secondary">→</span>
     </button>
+  </section>
+
+  <section class="flex flex-col gap-3 px-4 py-3 border-b border-primary">
+    <label class="flex items-center justify-between gap-3 text-sm" for="dynamicTitle">
+      <span>Dynamic tab title</span>
+      <input
+        id="dynamicTitle"
+        type="checkbox"
+        class="h-4 w-4 accent-orange-500"
+        bind:checked={dynamicTitle}
+        onchange={saveDynamicTitle}
+      />
+    </label>
+
+    <label class="flex items-center justify-between gap-3 text-sm" for="fillerBadges">
+      <span>Filler badges</span>
+      <input
+        id="fillerBadges"
+        type="checkbox"
+        class="h-4 w-4 accent-orange-500"
+        bind:checked={fillerBadges}
+        onchange={saveFillerBadges}
+      />
+    </label>
+
+    <label class="flex items-center justify-between gap-3 text-sm" for="accessibleBadges">
+      <span>Label badges (no color reliance)</span>
+      <input
+        id="accessibleBadges"
+        type="checkbox"
+        class="h-4 w-4 accent-orange-500"
+        disabled={!fillerBadges}
+        bind:checked={accessibleBadges}
+        onchange={saveAccessibleBadges}
+      />
+    </label>
   </section>
 
   <section class="flex flex-col gap-3 px-4 py-3 border-b border-primary">

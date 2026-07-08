@@ -149,6 +149,7 @@ export default defineContentScript({
 
       identityCleared = true;
       lastReportedIdentity = null;
+      restoreTabTitle();
 
       browser.runtime
         .sendMessage({ action: 'scrobble:identity', identity: null })
@@ -175,8 +176,9 @@ export default defineContentScript({
      * @param animeTitle - The catalog anime title.
      * @param episode - The episode number.
      * @param episodeTitle - The episode's title, when known.
+     * @param isFiller - Whether the episode is a filler.
      */
-    function showTrackingPill(animeTitle: string, episode: number, episodeTitle: string | null): void {
+    function showTrackingPill(animeTitle: string, episode: number, episodeTitle: string | null, isFiller: boolean): void {
       let pill = document.getElementById('kurozora-tracking-pill');
 
       if (pill === null) {
@@ -192,6 +194,13 @@ export default defineContentScript({
 
       const body = document.createElement('div');
       body.textContent = animeTitle + ' · Episode ' + episode + (episodeTitle ? ': ' + episodeTitle : '');
+
+      if (isFiller) {
+        const fillerChip = document.createElement('span');
+        fillerChip.textContent = 'FILLER';
+        fillerChip.style.cssText = 'margin-left:8px;padding:1px 6px;border-radius:4px;background:#ff453a;color:#fff;font:700 10px/1.4 system-ui;letter-spacing:.4px;vertical-align:middle;';
+        body.appendChild(fillerChip);
+      }
 
       pill.replaceChildren(heading, body);
     }
@@ -412,10 +421,144 @@ export default defineContentScript({
       }
     });
 
+    /**
+     * The site's own title, captured before the first live rewrite.
+     */
+    let siteTitle: string | null = null;
+
+    /**
+     * The season's episode facts for on-page badges, when received.
+     */
+    let gridEpisodes: { number: number; fillerKind: number; isWatched: boolean }[] | null = null;
+
+    /**
+     * Whether badges distinguish fillers without relying on color.
+     */
+    let gridAccessible = false;
+
+    /**
+     * The earliest time the grid may be annotated again.
+     */
+    let nextAnnotateAt = 0;
+
+    /**
+     * Rewrites the tab title with the live playback summary.
+     *
+     * @param title - The series title.
+     * @param episode - The episode number, when known.
+     * @param position - The playback position, in seconds.
+     * @param duration - The runtime, in seconds.
+     * @param playing - Whether playback is running.
+     */
+    function applyTabTitle(title: string, episode: number | null, position: number, duration: number, playing: boolean): void {
+      if (siteTitle === null) {
+        siteTitle = document.title;
+      }
+
+      const timing = duration > 0 ? ' (' + formatTime(position) + '/' + formatTime(duration) + ')' : '';
+
+      document.title = (playing ? '▶ ' : '⏸ ') + title + (episode !== null ? ' · Ep ' + episode : '') + timing;
+    }
+
+    /**
+     * Restores the site's own tab title after a rewrite.
+     */
+    function restoreTabTitle(): void {
+      if (siteTitle !== null) {
+        document.title = siteTitle;
+        siteTitle = null;
+      }
+    }
+
+    /**
+     * The label and color for a filler-kind badge.
+     *
+     * @param fillerKind - The episode's filler kind.
+     */
+    function fillerBadgeStyle(fillerKind: number): { label: string; color: string; textColor: string } {
+      switch (fillerKind) {
+        case 1: return { label: 'FILLER', color: '#ff453a', textColor: '#fff' };
+        case 2: return { label: 'MANGA CANON', color: '#32d74b', textColor: '#fff' };
+        case 3: return { label: 'MIXED', color: '#ffd60a', textColor: '#1c1c1e' };
+        default: return { label: 'ANIME CANON', color: '#0a84ff', textColor: '#fff' };
+      }
+    }
+
+    /**
+     * Removes every injected filler badge and clears its cell marker.
+     */
+    function clearFillerBadges(): void {
+      document.querySelectorAll('.kurozora-filler-badge').forEach((badge) => badge.remove());
+      document.querySelectorAll<HTMLElement>('[data-kurozora-badge]').forEach((cell) => {
+        delete cell.dataset.kurozoraBadge;
+      });
+    }
+
+    /**
+     * Annotates the site's episode grid with filler badges.
+     */
+    function annotateGrid(): void {
+      if (gridEpisodes === null || page?.episodeCells === undefined) {
+        return;
+      }
+
+      const facts = new Map(gridEpisodes.map((episode) => [episode.number, episode]));
+
+      page.episodeCells(document).forEach(({ element, episode }) => {
+        const fact = facts.get(episode);
+
+        if (fact === undefined || element.dataset.kurozoraBadge === String(fact.fillerKind)) {
+          return;
+        }
+
+        element.dataset.kurozoraBadge = String(fact.fillerKind);
+        element.querySelector(':scope > .kurozora-filler-badge')?.remove();
+
+        const style = fillerBadgeStyle(fact.fillerKind);
+        const badge = document.createElement('span');
+        badge.className = 'kurozora-filler-badge';
+        badge.title = style.label.charAt(0) + style.label.slice(1).toLowerCase() + ' episode';
+
+        if (gridAccessible) {
+          // Distinguish without relying on color: a visible text label.
+          badge.textContent = style.label;
+          badge.style.cssText = 'position:absolute;z-index:10;top:4px;left:4px;padding:1px 5px;border-radius:4px;font:700 9px/1.4 system-ui;letter-spacing:.4px;pointer-events:none;color:'
+            + style.textColor + ';background:' + style.color + ';';
+        } else {
+          badge.style.cssText = 'position:absolute;z-index:10;top:6px;left:6px;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 2px rgba(0,0,0,.5);pointer-events:none;background:'
+            + style.color + ';';
+        }
+
+        if (getComputedStyle(element).position === 'static') {
+          element.style.position = 'relative';
+        }
+
+        element.appendChild(badge);
+      });
+    }
+
     if (window === window.top) {
-      browser.runtime.onMessage.addListener((message: { action?: string; animeTitle?: string; episode?: number; episodeTitle?: string | null }) => {
+      browser.runtime.onMessage.addListener((message: { action?: string; animeTitle?: string; episode?: number | null; episodeTitle?: string | null; isFiller?: boolean; title?: string; position?: number; duration?: number; playing?: boolean; episodes?: { number: number; fillerKind: number; isWatched: boolean }[]; accessible?: boolean }) => {
         if (message?.action === 'tracking:show' && typeof message.animeTitle === 'string') {
-          showTrackingPill(message.animeTitle, message.episode ?? 0, message.episodeTitle ?? null);
+          showTrackingPill(message.animeTitle, message.episode ?? 0, message.episodeTitle ?? null, message.isFiller === true);
+        }
+
+        if (message?.action === 'title:update' && typeof message.title === 'string') {
+          applyTabTitle(message.title, message.episode ?? null, message.position ?? 0, message.duration ?? 0, message.playing === true);
+        }
+
+        if (message?.action === 'grid:update' && Array.isArray(message.episodes)) {
+          gridEpisodes = message.episodes;
+          gridAccessible = message.accessible === true;
+          clearFillerBadges();
+          annotateGrid();
+        }
+      });
+
+      // Turning the dynamic title off restores the site's own tab title live.
+      browser.storage.local.onChanged.addListener((changes) => {
+        if (changes.dynamicTitle?.newValue === false) {
+          restoreTabTitle();
         }
       });
 
@@ -467,10 +610,17 @@ export default defineContentScript({
           pendingSeek = null;
           clearSeekTimer();
           hideResumePrompt();
+          gridEpisodes = null;
+          restoreTabTitle();
           clearIdentity();
         }
 
         reportIdentity();
+
+        if (Date.now() >= nextAnnotateAt) {
+          nextAnnotateAt = Date.now() + 2000;
+          annotateGrid();
+        }
       }).observe(document.documentElement, { subtree: true, childList: true });
     }
 

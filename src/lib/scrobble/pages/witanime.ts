@@ -34,6 +34,25 @@ const witanime: PageModule = {
       episode: identity.episode,
     };
   },
+
+  episodeCells(pageDocument) {
+    const cells: { element: HTMLElement; episode: number }[] = [];
+
+    // Episode entries link to "/episode/" and carry an Arabic "الحلقة {n}"
+    // label; best-effort until verified against the live grid.
+    pageDocument.querySelectorAll<HTMLAnchorElement>('a[href*="/episode/"]').forEach((anchor) => {
+      const label = anchor.getAttribute('title') ?? anchor.textContent ?? '';
+      const marker = label.match(EPISODE_PATTERN) ?? label.match(/\b(\d+)\b/);
+
+      if (marker === null) {
+        return;
+      }
+
+      cells.push({ element: anchor, episode: parseInt(marker[1], 10) });
+    });
+
+    return cells;
+  },
 };
 
 export default witanime;

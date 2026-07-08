@@ -140,6 +140,13 @@ export interface PageModule {
    * @param pageURL - The watch page's URL.
    */
   captureNetwork?(url: string, body: string, pageURL?: string): CapturedEpisode | null;
+
+  /**
+   * The site's on-page episode cells, for badge and overlay injection.
+   *
+   * @param pageDocument - The document to inspect.
+   */
+  episodeCells?(pageDocument: Document): { element: HTMLElement; episode: number }[];
 }
 
 /**
