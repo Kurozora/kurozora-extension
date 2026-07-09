@@ -126,6 +126,7 @@ export default defineContentScript({
 
       identityCleared = false;
       lastReportedIdentity = identityKey;
+      currentEpisodeNumber = identity.episode;
       console.log('[Kurozora] identity', identity);
 
       // The first report after a page load resets the tab's server-side session.
@@ -149,6 +150,7 @@ export default defineContentScript({
 
       identityCleared = true;
       lastReportedIdentity = null;
+      currentEpisodeNumber = null;
       restoreTabTitle();
 
       browser.runtime
@@ -419,7 +421,87 @@ export default defineContentScript({
       if (message?.action === 'resume:seek' && typeof message.position === 'number') {
         seekTo(message.position);
       }
+
+      if (message?.action === 'controls:show') {
+        showControlStrip();
+      }
     });
+
+    /**
+     * The playback speeds the strip's speed button cycles through.
+     */
+    const STRIP_SPEEDS = [1, 1.25, 1.5, 1.75, 2];
+
+    /**
+     * Shows the on-player control strip next to the tracked video.
+     */
+    function showControlStrip(): void {
+      const video = trackedVideo;
+      const host = video?.parentElement;
+
+      if (video === null || host === null || host === undefined || host.querySelector(':scope > .kurozora-control-strip') !== null) {
+        return;
+      }
+
+      const strip = document.createElement('div');
+      strip.className = 'kurozora-control-strip';
+      strip.style.cssText = 'position:absolute;z-index:2147483647;top:12px;right:12px;display:flex;gap:6px;padding:4px;border-radius:8px;background:rgba(28,28,30,.85);opacity:.35;transition:opacity .15s ease-in-out;';
+      strip.addEventListener('mouseenter', () => (strip.style.opacity = '1'));
+      strip.addEventListener('mouseleave', () => (strip.style.opacity = '.35'));
+
+      const speedButton = stripButton(video.playbackRate + '×');
+      speedButton.title = 'Playback speed';
+      speedButton.addEventListener('click', () => {
+        const nextIndex = (STRIP_SPEEDS.indexOf(video.playbackRate) + 1) % STRIP_SPEEDS.length;
+        video.playbackRate = STRIP_SPEEDS[nextIndex];
+        speedButton.textContent = STRIP_SPEEDS[nextIndex] + '×';
+      });
+
+      const skipButton = stripButton('+85s');
+      skipButton.title = 'Skip intro';
+      skipButton.addEventListener('click', () => {
+        video.currentTime = Math.min(video.currentTime + 85, video.duration || video.currentTime + 85);
+      });
+
+      const watchedButton = stripButton('✓');
+      watchedButton.title = 'Mark as watched';
+      watchedButton.addEventListener('click', () => {
+        watchedButton.textContent = '✓ Watched';
+        watchedButton.disabled = true;
+
+        browser.runtime
+          .sendMessage({ action: 'controls:markWatched' })
+          .catch((error) => console.warn('[Kurozora] mark watched failed', error?.message));
+      });
+
+      strip.append(speedButton, skipButton, watchedButton);
+
+      if (getComputedStyle(host).position === 'static') {
+        host.style.position = 'relative';
+      }
+
+      host.appendChild(strip);
+    }
+
+    /**
+     * Removes the on-player control strip.
+     */
+    function hideControlStrip(): void {
+      document.querySelector('.kurozora-control-strip')?.remove();
+    }
+
+    /**
+     * A styled control-strip button.
+     *
+     * @param label - The button label.
+     */
+    function stripButton(label: string): HTMLButtonElement {
+      const button = document.createElement('button');
+      button.textContent = label;
+      button.style.cssText = 'all:unset;cursor:pointer;padding:4px 8px;border-radius:6px;color:#fff;font:700 11px/1 system-ui;letter-spacing:.2px;background:rgba(255,255,255,.12);';
+
+      return button;
+    }
 
     /**
      * The site's own title, captured before the first live rewrite.
@@ -432,9 +514,24 @@ export default defineContentScript({
     let gridEpisodes: { number: number; fillerKind: number; isWatched: boolean }[] | null = null;
 
     /**
+     * Whether filler badges are injected.
+     */
+    let gridBadges = true;
+
+    /**
      * Whether badges distinguish fillers without relying on color.
      */
     let gridAccessible = false;
+
+    /**
+     * Whether unwatched episodes ahead of the current one are covered.
+     */
+    let gridAntiSpoiler = false;
+
+    /**
+     * The episode number currently playing, per the reported identity.
+     */
+    let currentEpisodeNumber: number | null = null;
 
     /**
      * The earliest time the grid may be annotated again.
@@ -471,6 +568,37 @@ export default defineContentScript({
     }
 
     /**
+     * Annotates the site's episode grid with filler badges and spoiler covers.
+     */
+    function annotateGrid(): void {
+      if (gridEpisodes === null || page?.episodeCells === undefined) {
+        return;
+      }
+
+      const facts = new Map(gridEpisodes.map((episode) => [episode.number, episode]));
+      const watchedCeiling = Math.max(
+        currentEpisodeNumber ?? 0,
+        ...gridEpisodes.filter((episode) => episode.isWatched).map((episode) => episode.number),
+      );
+
+      page.episodeCells(document).forEach(({ element, episode }) => {
+        const fact = facts.get(episode);
+
+        if (fact === undefined) {
+          return;
+        }
+
+        if (gridBadges && element.dataset.kurozoraBadge !== String(fact.fillerKind)) {
+          injectFillerBadge(element, fact.fillerKind);
+        }
+
+        if (gridAntiSpoiler && !fact.isWatched && episode > watchedCeiling && element.dataset.kurozoraSpoiler === undefined) {
+          injectSpoilerCover(element, episode);
+        }
+      });
+    }
+
+    /**
      * The label and color for a filler-kind badge.
      *
      * @param fillerKind - The episode's filler kind.
@@ -485,6 +613,64 @@ export default defineContentScript({
     }
 
     /**
+     * Injects a filler-kind badge into an episode cell.
+     *
+     * @param element - The episode cell.
+     * @param fillerKind - The episode's filler kind.
+     */
+    function injectFillerBadge(element: HTMLElement, fillerKind: number): void {
+      element.dataset.kurozoraBadge = String(fillerKind);
+      element.querySelector(':scope > .kurozora-filler-badge')?.remove();
+
+      const style = fillerBadgeStyle(fillerKind);
+      const badge = document.createElement('span');
+      badge.className = 'kurozora-filler-badge';
+      badge.title = style.label.charAt(0) + style.label.slice(1).toLowerCase() + ' episode';
+
+      if (gridAccessible) {
+        // Distinguish without relying on color: a visible text label.
+        badge.textContent = style.label;
+        badge.style.cssText = 'position:absolute;z-index:10;top:4px;left:4px;padding:1px 5px;border-radius:4px;font:700 9px/1.4 system-ui;letter-spacing:.4px;pointer-events:none;color:'
+          + style.textColor + ';background:' + style.color + ';';
+      } else {
+        badge.style.cssText = 'position:absolute;z-index:10;top:6px;left:6px;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 2px rgba(0,0,0,.5);pointer-events:none;background:'
+          + style.color + ';';
+      }
+
+      if (getComputedStyle(element).position === 'static') {
+        element.style.position = 'relative';
+      }
+
+      element.appendChild(badge);
+    }
+
+    /**
+     * Covers an unwatched future episode cell until the user reveals it.
+     *
+     * @param element - The episode cell.
+     * @param episode - The episode number.
+     */
+    function injectSpoilerCover(element: HTMLElement, episode: number): void {
+      element.dataset.kurozoraSpoiler = '1';
+
+      const cover = document.createElement('div');
+      cover.className = 'kurozora-spoiler-cover';
+      cover.textContent = 'Spoiler · Ep ' + episode + ' · Click to reveal';
+      cover.style.cssText = 'position:absolute;inset:0;z-index:11;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);background:rgba(28,28,30,.35);color:#fff;font:700 11px/1.3 system-ui;letter-spacing:.4px;cursor:pointer;';
+      cover.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        cover.remove();
+      });
+
+      if (getComputedStyle(element).position === 'static') {
+        element.style.position = 'relative';
+      }
+
+      element.appendChild(cover);
+    }
+
+    /**
      * Removes every injected filler badge and clears its cell marker.
      */
     function clearFillerBadges(): void {
@@ -494,51 +680,8 @@ export default defineContentScript({
       });
     }
 
-    /**
-     * Annotates the site's episode grid with filler badges.
-     */
-    function annotateGrid(): void {
-      if (gridEpisodes === null || page?.episodeCells === undefined) {
-        return;
-      }
-
-      const facts = new Map(gridEpisodes.map((episode) => [episode.number, episode]));
-
-      page.episodeCells(document).forEach(({ element, episode }) => {
-        const fact = facts.get(episode);
-
-        if (fact === undefined || element.dataset.kurozoraBadge === String(fact.fillerKind)) {
-          return;
-        }
-
-        element.dataset.kurozoraBadge = String(fact.fillerKind);
-        element.querySelector(':scope > .kurozora-filler-badge')?.remove();
-
-        const style = fillerBadgeStyle(fact.fillerKind);
-        const badge = document.createElement('span');
-        badge.className = 'kurozora-filler-badge';
-        badge.title = style.label.charAt(0) + style.label.slice(1).toLowerCase() + ' episode';
-
-        if (gridAccessible) {
-          // Distinguish without relying on color: a visible text label.
-          badge.textContent = style.label;
-          badge.style.cssText = 'position:absolute;z-index:10;top:4px;left:4px;padding:1px 5px;border-radius:4px;font:700 9px/1.4 system-ui;letter-spacing:.4px;pointer-events:none;color:'
-            + style.textColor + ';background:' + style.color + ';';
-        } else {
-          badge.style.cssText = 'position:absolute;z-index:10;top:6px;left:6px;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 2px rgba(0,0,0,.5);pointer-events:none;background:'
-            + style.color + ';';
-        }
-
-        if (getComputedStyle(element).position === 'static') {
-          element.style.position = 'relative';
-        }
-
-        element.appendChild(badge);
-      });
-    }
-
     if (window === window.top) {
-      browser.runtime.onMessage.addListener((message: { action?: string; animeTitle?: string; episode?: number | null; episodeTitle?: string | null; isFiller?: boolean; title?: string; position?: number; duration?: number; playing?: boolean; episodes?: { number: number; fillerKind: number; isWatched: boolean }[]; accessible?: boolean }) => {
+      browser.runtime.onMessage.addListener((message: { action?: string; animeTitle?: string; episode?: number | null; episodeTitle?: string | null; isFiller?: boolean; title?: string; position?: number; duration?: number; playing?: boolean; episodes?: { number: number; fillerKind: number; isWatched: boolean }[]; badges?: boolean; accessible?: boolean; antiSpoiler?: boolean }) => {
         if (message?.action === 'tracking:show' && typeof message.animeTitle === 'string') {
           showTrackingPill(message.animeTitle, message.episode ?? 0, message.episodeTitle ?? null, message.isFiller === true);
         }
@@ -549,16 +692,38 @@ export default defineContentScript({
 
         if (message?.action === 'grid:update' && Array.isArray(message.episodes)) {
           gridEpisodes = message.episodes;
+          gridBadges = message.badges !== false;
           gridAccessible = message.accessible === true;
+          gridAntiSpoiler = message.antiSpoiler === true;
           clearFillerBadges();
           annotateGrid();
         }
       });
 
-      // Turning the dynamic title off restores the site's own tab title live.
+      // Display settings apply live; the badge and title toggles take effect
+      // without reloading the page.
       browser.storage.local.onChanged.addListener((changes) => {
         if (changes.dynamicTitle?.newValue === false) {
           restoreTabTitle();
+        }
+
+        let regridded = false;
+
+        if (changes.fillerBadges !== undefined) {
+          gridBadges = changes.fillerBadges.newValue !== false;
+          regridded = true;
+        }
+
+        if (changes.accessibleBadges !== undefined) {
+          gridAccessible = changes.accessibleBadges.newValue === true;
+          regridded = true;
+        }
+
+        // Re-render from the cached grid; the background re-sends a fresh one
+        // when a toggle turns on and this tab holds no grid yet.
+        if (regridded) {
+          clearFillerBadges();
+          annotateGrid();
         }
       });
 
@@ -612,6 +777,7 @@ export default defineContentScript({
           hideResumePrompt();
           gridEpisodes = null;
           restoreTabTitle();
+          hideControlStrip();
           clearIdentity();
         }
 
@@ -626,6 +792,32 @@ export default defineContentScript({
 
     let tracker: VideoTracker | null = null;
     let trackedVideo: HTMLVideoElement | null = null;
+
+    /**
+     * The locked playback speed, or null when the lock is off.
+     */
+    let preferredSpeed: number | null = null;
+
+    /**
+     * Applies the locked playback speed to the tracked video.
+     */
+    function applyPreferredSpeed(): void {
+      if (preferredSpeed !== null && trackedVideo !== null && trackedVideo.isConnected) {
+        trackedVideo.playbackRate = preferredSpeed;
+      }
+    }
+
+    browser.storage.local.get('playbackSpeed').then((stored) => {
+      preferredSpeed = typeof stored.playbackSpeed === 'number' ? stored.playbackSpeed : null;
+      applyPreferredSpeed();
+    });
+
+    browser.storage.local.onChanged.addListener((changes) => {
+      if (changes.playbackSpeed !== undefined) {
+        preferredSpeed = typeof changes.playbackSpeed.newValue === 'number' ? changes.playbackSpeed.newValue : null;
+        applyPreferredSpeed();
+      }
+    });
 
     /**
      * Attaches the tracker to the frame's video, following element swaps.
@@ -655,6 +847,10 @@ export default defineContentScript({
       }
 
       video.addEventListener('loadstart', () => tracker?.reset());
+
+      // Sites reset the rate on every new episode; the lock re-applies it.
+      applyPreferredSpeed();
+      video.addEventListener('loadeddata', applyPreferredSpeed);
 
       // A seek or resume prompt requested before this element existed still lands.
       tryPendingSeek();

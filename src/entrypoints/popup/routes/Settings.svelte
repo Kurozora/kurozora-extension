@@ -49,6 +49,15 @@
   let fillerBadges = $state(true);
   /** Whether badges distinguish fillers without relying on color. */
   let accessibleBadges = $state(false);
+  /** Whether unwatched episodes ahead of the current one are blurred. */
+  let antiSpoiler = $state(false);
+  /** The locked playback speed, 0 when the lock is off. */
+  let playbackSpeed = $state(0);
+  /** Whether the on-player control strip is injected. */
+  let playerControls = $state(true);
+
+  /** The selectable playback speeds. */
+  const PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
   /** Whether a sign-out request is in flight. */
   let signingOut = $state(false);
 
@@ -60,12 +69,34 @@
 
   /** Restores the tracking-notification preference into the control. */
   async function loadNotifications(): Promise<void> {
-    const stored = await browser.storage.local.get(["trackingNotifications", "resumeMode", "dynamicTitle", "fillerBadges", "accessibleBadges"]);
+    const stored = await browser.storage.local.get(["trackingNotifications", "resumeMode", "dynamicTitle", "fillerBadges", "accessibleBadges", "antiSpoiler", "playbackSpeed", "playerControls"]);
     trackingNotifications = stored.trackingNotifications === true;
     resumeMode = stored.resumeMode === "auto" ? "auto" : "ask";
     dynamicTitle = stored.dynamicTitle !== false;
     fillerBadges = stored.fillerBadges !== false;
     accessibleBadges = stored.accessibleBadges === true;
+    antiSpoiler = stored.antiSpoiler === true;
+    playbackSpeed = typeof stored.playbackSpeed === "number" ? stored.playbackSpeed : 0;
+    playerControls = stored.playerControls !== false;
+  }
+
+  /** Persists whether the on-player control strip is injected. */
+  async function savePlayerControls(): Promise<void> {
+    await browser.storage.local.set({ playerControls });
+  }
+
+  /** Persists whether future unwatched episodes are blurred. */
+  async function saveAntiSpoiler(): Promise<void> {
+    await browser.storage.local.set({ antiSpoiler });
+  }
+
+  /** Persists the locked playback speed, clearing the lock at 0. */
+  async function savePlaybackSpeed(): Promise<void> {
+    if (playbackSpeed === 0) {
+      await browser.storage.local.remove("playbackSpeed");
+    } else {
+      await browser.storage.local.set({ playbackSpeed });
+    }
   }
 
   /** Persists how a stored resume position is applied. */
@@ -297,6 +328,43 @@
         bind:checked={accessibleBadges}
         onchange={saveAccessibleBadges}
       />
+    </label>
+
+    <label class="flex items-center justify-between gap-3 text-sm" for="antiSpoiler">
+      <span>Anti-spoiler blur</span>
+      <input
+        id="antiSpoiler"
+        type="checkbox"
+        class="h-4 w-4 accent-orange-500"
+        bind:checked={antiSpoiler}
+        onchange={saveAntiSpoiler}
+      />
+    </label>
+
+    <label class="flex items-center justify-between gap-3 text-sm" for="playerControls">
+      <span>Player controls</span>
+      <input
+        id="playerControls"
+        type="checkbox"
+        class="h-4 w-4 accent-orange-500"
+        bind:checked={playerControls}
+        onchange={savePlayerControls}
+      />
+    </label>
+
+    <label class="flex items-center justify-between gap-3 text-sm" for="playbackSpeed">
+      <span>Playback speed lock</span>
+      <select
+        id="playbackSpeed"
+        class="rounded-md px-2 py-1 text-xs shadow-sm bg-secondary text-primary border border-primary transition ease-in-out duration-150 focus:border-tint focus:ring-2 focus:ring-orange-500 focus:outline-none"
+        bind:value={playbackSpeed}
+        onchange={savePlaybackSpeed}
+      >
+        <option value={0}>Off</option>
+        {#each PLAYBACK_SPEEDS as speed (speed)}
+          <option value={speed}>{speed}×</option>
+        {/each}
+      </select>
     </label>
   </section>
 

@@ -61,13 +61,15 @@ export default defineBackground(() => {
    * Restores the incognito and per-site tracking preferences.
    */
   async function restoreTrackingRules(): Promise<void> {
-    const stored = await browser.storage.local.get(['incognito', 'blockedDomains', 'visitedDomains', 'dynamicTitle', 'fillerBadges', 'accessibleBadges']);
+    const stored = await browser.storage.local.get(['incognito', 'blockedDomains', 'visitedDomains', 'dynamicTitle', 'fillerBadges', 'accessibleBadges', 'antiSpoiler', 'playerControls']);
 
     incognitoEnabled = stored.incognito === true;
     blockedDomains = Array.isArray(stored.blockedDomains) ? stored.blockedDomains : [];
     dynamicTitleEnabled = stored.dynamicTitle !== false;
     fillerBadgesEnabled = stored.fillerBadges !== false;
     accessibleBadgesEnabled = stored.accessibleBadges === true;
+    antiSpoilerEnabled = stored.antiSpoiler === true;
+    playerControlsEnabled = stored.playerControls !== false;
 
     if (Array.isArray(stored.visitedDomains)) {
       stored.visitedDomains.forEach((domain: string) => visitedDomains.add(domain));
@@ -98,10 +100,19 @@ export default defineBackground(() => {
   }
 
   const scrobbleSessions = new ScrobbleSessionManager(kit, () => {
+    // Watched flags in the cached grids are stale after a commit.
+    gridCache.clear();
+
     refreshUpNext().catch((error: { message?: string }) => console.warn('[Kurozora] up-next refresh failed', error?.message));
   }, showTrackingNotification, offerResume, (tabID, episodePublicID) => {
     sendEpisodeGrid(tabID, episodePublicID)
       .catch((error: { message?: string }) => console.warn('[Kurozora] episode grid failed', error?.message));
+
+    if (playerControlsEnabled) {
+      browser.tabs
+        .sendMessage(tabID, { action: 'controls:show' })
+        .catch(() => {});
+    }
   });
 
   /**
@@ -120,6 +131,16 @@ export default defineBackground(() => {
   let accessibleBadgesEnabled = false;
 
   /**
+   * Whether unwatched episodes ahead of the current one are blurred.
+   */
+  let antiSpoilerEnabled = false;
+
+  /**
+   * Whether the on-player control strip is injected.
+   */
+  let playerControlsEnabled = true;
+
+  /**
    * The per-season grid payloads already fetched, keyed by season id.
    */
   const gridCache = new Map<string, { number: number; fillerKind: number; isWatched: boolean }[]>();
@@ -131,7 +152,7 @@ export default defineBackground(() => {
    * @param episodePublicID - The playing episode's public id.
    */
   async function sendEpisodeGrid(tabID: number, episodePublicID: string): Promise<void> {
-    if (!fillerBadgesEnabled) {
+    if (!fillerBadgesEnabled && !antiSpoilerEnabled) {
       return;
     }
 
@@ -151,7 +172,13 @@ export default defineBackground(() => {
 
     await browser.tabs.sendMessage(
       tabID,
-      { action: 'grid:update', episodes: grid, accessible: accessibleBadgesEnabled },
+      {
+        action: 'grid:update',
+        episodes: grid,
+        badges: fillerBadgesEnabled,
+        accessible: accessibleBadgesEnabled,
+        antiSpoiler: antiSpoilerEnabled,
+      },
       { frameId: 0 },
     );
   }
@@ -502,6 +529,14 @@ export default defineBackground(() => {
       accessibleBadgesEnabled = changes.accessibleBadges.newValue === true;
     }
 
+    if (changes.antiSpoiler !== undefined) {
+      antiSpoilerEnabled = changes.antiSpoiler.newValue === true;
+    }
+
+    if (changes.playerControls !== undefined) {
+      playerControlsEnabled = changes.playerControls.newValue !== false;
+    }
+
     // A badge toggle needs the grid re-sent to tabs that never received it;
     // the flags above are already current for the re-send.
     if (changes.fillerBadges !== undefined || changes.accessibleBadges !== undefined) {
@@ -529,6 +564,12 @@ export default defineBackground(() => {
         recordVisitedDomain(sender.tab.url).catch(() => {});
         scrobbleSessions.handleIdentity(sender.tab.id, request.identity, sender.tab.url ?? null, request.fresh === true);
       }
+    }
+
+    if (request.action === 'controls:markWatched' && sender.tab?.id !== undefined) {
+      const tabID = sender.tab.id;
+
+      kitReady.then(() => scrobbleSessions.handlePlayback(tabID, { event: 'complete', progress: 100, position: null }));
     }
 
     if (request.action === 'resume:accept' && sender.tab?.id !== undefined) {
