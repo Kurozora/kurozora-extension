@@ -20,8 +20,8 @@
     });
 
     prepare()
-      .then((authenticationKey) => {
-        push(authenticationKey ? "/" : "/signin");
+      .then(() => {
+        push("/");
         ready = true;
       })
       .catch((error: { message?: string }) => {

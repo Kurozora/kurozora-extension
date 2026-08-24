@@ -2,7 +2,9 @@
   import { onDestroy, onMount } from "svelte";
   import { push } from "svelte-spa-router";
   import { browser } from "wxt/browser";
+  import Button from "@/lib/components/Button.svelte";
   import SimpleButton from "@/lib/components/SimpleButton.svelte";
+  import { kit } from "../kit";
   import { pageFor } from "@/lib/scrobble/page-registry";
   import type { UpNextRow } from "@/lib/up-next";
 
@@ -10,6 +12,8 @@
   let rows = $state<UpNextRow[]>([]);
   /** Whether the initial cache read is still pending. */
   let loading = $state(true);
+  /** Whether a session is stored. */
+  const signedIn = kit.authenticationKey !== "";
   /** The most recent load error message, if any. */
   let errorMessage = $state<string | null>(null);
   /** Whether incognito suspends all tracking. */
@@ -88,6 +92,11 @@
     browser.runtime.onMessage.addListener(handleMessage);
 
     loadTrackingRules().catch(() => {});
+
+    if (!signedIn) {
+      loading = false;
+      return;
+    }
 
     browser.runtime
       .sendMessage({ action: "popup:getUpNext" })
@@ -221,7 +230,14 @@
     </button>
   </section>
 
-  {#if loading}
+  {#if !signedIn}
+    <section class="flex flex-col items-start gap-3 px-4 py-4">
+      <p class="text-sm text-secondary">
+        Sign in to track what you watch and pick up where you left off.
+      </p>
+      <Button type="button" onclick={() => push("/signin")}>Sign in</Button>
+    </section>
+  {:else if loading}
     <p class="px-4 py-4 text-sm text-secondary">Loading your episodes…</p>
   {:else if errorMessage}
     <p class="px-4 py-4 text-sm text-red-300">{errorMessage}</p>

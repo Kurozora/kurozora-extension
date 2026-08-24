@@ -4,6 +4,7 @@
   import { browser } from "wxt/browser";
   import Button from "@/lib/components/Button.svelte";
   import ErrorBanner from "@/lib/components/ErrorBanner.svelte";
+  import SimpleButton from "@/lib/components/SimpleButton.svelte";
   import SimpleLink from "@/lib/components/SimpleLink.svelte";
   import TextField from "@/lib/components/TextField.svelte";
   import TwoFactorChallenge from "./TwoFactorChallenge.svelte";
@@ -75,6 +76,10 @@
   <TwoFactorChallenge {challengeToken} onback={handleChallengeBack} />
 {:else}
   <div class="flex flex-col justify-center max-w-prose mx-auto px-4 py-6">
+    <div class="mb-3">
+      <SimpleButton onclick={() => push("/")}>← Up Next</SimpleButton>
+    </div>
+
     <section>
       <div class="text-center mb-5">
         <h1 class="text-2xl font-bold">Welcome to Kurozora!</h1>
