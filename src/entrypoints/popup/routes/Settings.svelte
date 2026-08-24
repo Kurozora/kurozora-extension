@@ -3,8 +3,14 @@
   import { push } from "svelte-spa-router";
   import { browser } from "wxt/browser";
   import Button from "@/lib/components/Button.svelte";
+  import SettingsGroup from "@/lib/components/SettingsGroup.svelte";
+  import SettingsRow from "@/lib/components/SettingsRow.svelte";
+  import ShortcutField from "@/lib/components/ShortcutField.svelte";
   import SimpleButton from "@/lib/components/SimpleButton.svelte";
+  import { CHECKBOX_CLASS, SELECT_CLASS } from "@/lib/components/controls";
   import { KurozoraAPI } from "kurozorakit";
+  import { loadNewTabEnabled, saveNewTabEnabled } from "@/lib/new-tab";
+  import { loadBlurShortcut, saveBlurShortcut, type Shortcut } from "@/lib/date-widget/shortcut";
   import { kit } from "../kit";
 
   /** The lowest selectable watched threshold. */
@@ -28,6 +34,8 @@
     { value: 2, label: "Media kind" },
     { value: 3, label: "Kurozora" },
   ];
+  /** The selectable playback speeds. */
+  const PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
 
   /** The selected API environment key. */
   let environment = $state<keyof typeof KurozoraAPI>("v1");
@@ -55,17 +63,45 @@
   let playbackSpeed = $state(0);
   /** Whether the on-player control strip is injected. */
   let playerControls = $state(true);
-
-  /** The selectable playback speeds. */
-  const PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
   /** Whether a sign-out request is in flight. */
   let signingOut = $state(false);
+  /** Whether a session is stored. */
+  let signedIn = $state(kit.authenticationKey !== "");
+  /** Whether the new tab shows the Date widget. */
+  let newTabEnabled = $state(false);
+  /** The shortcut that blurs the new tab's image. */
+  let blurShortcut = $state<Shortcut | null>(null);
 
   onMount(() => {
     loadEnvironment();
     loadNotifications();
-    loadSettings();
+    loadNewTab();
+
+    if (signedIn) {
+      loadSettings();
+    }
   });
+
+  /** Restores the new tab preferences. */
+  async function loadNewTab(): Promise<void> {
+    newTabEnabled = await loadNewTabEnabled();
+    blurShortcut = await loadBlurShortcut();
+  }
+
+  /** Persists whether the new tab shows the Date widget. */
+  async function saveNewTab(): Promise<void> {
+    await saveNewTabEnabled(newTabEnabled);
+  }
+
+  /**
+   * Persists the shortcut that blurs the new tab's image.
+   *
+   * @param shortcut - The shortcut to assign, or `null` to clear it.
+   */
+  async function saveShortcut(shortcut: Shortcut | null): Promise<void> {
+    blurShortcut = shortcut;
+    await saveBlurShortcut(shortcut);
+  }
 
   /** Restores the tracking-notification preference into the control. */
   async function loadNotifications(): Promise<void> {
@@ -186,7 +222,7 @@
     await kit.me.updateSettings({ discordActivityName: activityName });
   }
 
-  /** Clears the stored key and returns to the sign-in screen. */
+  /** Clears the stored key and returns to Up Next. */
   async function handleSignOut(): Promise<void> {
     if (signingOut) return;
 
@@ -194,7 +230,8 @@
 
     try {
       await kit.services.clearAuthenticationKey();
-      push("/signin");
+      signedIn = false;
+      push("/");
     } finally {
       signingOut = false;
     }
@@ -202,38 +239,40 @@
 </script>
 
 <div class="flex flex-col">
-  <header
-    class="flex items-center justify-between px-4 py-3 border-b border-primary"
-  >
+  <header class="flex items-center justify-between px-4 py-3 border-b border-primary">
     <h1 class="text-lg font-bold">Settings</h1>
     <SimpleButton onclick={() => push("/")}>← Up Next</SimpleButton>
   </header>
 
-  <section class="px-4 py-3 border-b border-primary">
-    <label
-      class="flex items-center justify-between gap-3 text-sm"
-      for="apiEnvironment"
-    >
-      <span>Environment</span>
-      <select
-        id="apiEnvironment"
-        class="rounded-md px-2 py-1 text-xs shadow-sm bg-secondary text-primary border border-primary transition ease-in-out duration-150 focus:border-tint focus:ring-2 focus:ring-orange-500 focus:outline-none"
-        bind:value={environment}
-        onchange={handleEnvironmentChange}
-      >
-        <option value="v1">Production</option>
-        <option value="local">Local (kurozora.test)</option>
-        <option value="ngrok">ngrok</option>
-      </select>
-    </label>
-  </section>
+  <SettingsGroup title="New tab">
+    <SettingsRow label="Kurozora new tab" for="newTabEnabled">
+      <input
+        id="newTabEnabled"
+        type="checkbox"
+        class={CHECKBOX_CLASS}
+        bind:checked={newTabEnabled}
+        onchange={saveNewTab}
+      />
+    </SettingsRow>
 
-  <section class="px-4 py-3 border-b border-primary">
-    <label
-      class="flex items-center justify-between gap-3 text-sm"
-      for="scrobbleThreshold"
+    <SettingsRow
+      label="Blur image"
+      hint="Add a modifier to use it while typing."
+      for="blurShortcut"
+      nested
+      disabled={!newTabEnabled}
     >
-      <span>Mark watched at</span>
+      <ShortcutField
+        id="blurShortcut"
+        shortcut={blurShortcut}
+        disabled={!newTabEnabled}
+        onassign={saveShortcut}
+      />
+    </SettingsRow>
+  </SettingsGroup>
+
+  <SettingsGroup title="Tracking">
+    <SettingsRow label="Mark watched at" for="scrobbleThreshold" disabled={!signedIn}>
       <span class="flex items-center gap-2">
         <input
           id="scrobbleThreshold"
@@ -243,120 +282,48 @@
           max={MAX_THRESHOLD}
           step="1"
           value={threshold}
+          disabled={!signedIn}
           oninput={previewThreshold}
           onchange={saveThreshold}
         />
         <span class="w-10 text-right text-tint tabular-nums">{threshold}%</span>
       </span>
-    </label>
-  </section>
+    </SettingsRow>
 
-  <section class="px-4 py-3 border-b border-primary">
-    <label
-      class="flex items-center justify-between gap-3 text-sm"
-      for="resumeMode"
-    >
-      <span>Resume playback</span>
-      <select
-        id="resumeMode"
-        class="rounded-md px-2 py-1 text-xs shadow-sm bg-secondary text-primary border border-primary transition ease-in-out duration-150 focus:border-tint focus:ring-2 focus:ring-orange-500 focus:outline-none"
-        bind:value={resumeMode}
-        onchange={saveResumeMode}
-      >
+    <SettingsRow label="Resume playback" for="resumeMode">
+      <select id="resumeMode" class={SELECT_CLASS} bind:value={resumeMode} onchange={saveResumeMode}>
         <option value="ask">Ask every time</option>
         <option value="auto">Automatic</option>
       </select>
-    </label>
-  </section>
+    </SettingsRow>
 
-  <section class="px-4 py-3 border-b border-primary">
-    <label
-      class="flex items-center justify-between gap-3 text-sm"
-      for="trackingNotifications"
-    >
-      <span>Tracking notifications</span>
+    <SettingsRow label="Tracking notifications" for="trackingNotifications">
       <input
         id="trackingNotifications"
         type="checkbox"
-        class="h-4 w-4 accent-orange-500"
+        class={CHECKBOX_CLASS}
         bind:checked={trackingNotifications}
         onchange={saveNotifications}
       />
-    </label>
-  </section>
+    </SettingsRow>
+  </SettingsGroup>
 
-  <section class="px-4 py-3 border-b border-primary">
-    <button
-      class="flex w-full items-center justify-between gap-3 text-sm transition ease-in-out duration-150 hover:text-tint"
-      onclick={() => push("/sites")}
-    >
-      <span>Sites</span>
-      <span class="text-secondary">→</span>
-    </button>
-  </section>
-
-  <section class="flex flex-col gap-3 px-4 py-3 border-b border-primary">
-    <label class="flex items-center justify-between gap-3 text-sm" for="dynamicTitle">
-      <span>Dynamic tab title</span>
-      <input
-        id="dynamicTitle"
-        type="checkbox"
-        class="h-4 w-4 accent-orange-500"
-        bind:checked={dynamicTitle}
-        onchange={saveDynamicTitle}
-      />
-    </label>
-
-    <label class="flex items-center justify-between gap-3 text-sm" for="fillerBadges">
-      <span>Filler badges</span>
-      <input
-        id="fillerBadges"
-        type="checkbox"
-        class="h-4 w-4 accent-orange-500"
-        bind:checked={fillerBadges}
-        onchange={saveFillerBadges}
-      />
-    </label>
-
-    <label class="flex items-center justify-between gap-3 text-sm" for="accessibleBadges">
-      <span>Label badges (no color reliance)</span>
-      <input
-        id="accessibleBadges"
-        type="checkbox"
-        class="h-4 w-4 accent-orange-500"
-        disabled={!fillerBadges}
-        bind:checked={accessibleBadges}
-        onchange={saveAccessibleBadges}
-      />
-    </label>
-
-    <label class="flex items-center justify-between gap-3 text-sm" for="antiSpoiler">
-      <span>Anti-spoiler blur</span>
-      <input
-        id="antiSpoiler"
-        type="checkbox"
-        class="h-4 w-4 accent-orange-500"
-        bind:checked={antiSpoiler}
-        onchange={saveAntiSpoiler}
-      />
-    </label>
-
-    <label class="flex items-center justify-between gap-3 text-sm" for="playerControls">
-      <span>Player controls</span>
+  <SettingsGroup title="Streaming sites">
+    <SettingsRow label="Player controls" for="playerControls">
       <input
         id="playerControls"
         type="checkbox"
-        class="h-4 w-4 accent-orange-500"
+        class={CHECKBOX_CLASS}
         bind:checked={playerControls}
         onchange={savePlayerControls}
       />
-    </label>
+    </SettingsRow>
 
-    <label class="flex items-center justify-between gap-3 text-sm" for="playbackSpeed">
-      <span>Playback speed lock</span>
+    <SettingsRow label="Playback speed lock" for="playbackSpeed" nested disabled={!playerControls}>
       <select
         id="playbackSpeed"
-        class="rounded-md px-2 py-1 text-xs shadow-sm bg-secondary text-primary border border-primary transition ease-in-out duration-150 focus:border-tint focus:ring-2 focus:ring-orange-500 focus:outline-none"
+        class={SELECT_CLASS}
+        disabled={!playerControls}
         bind:value={playbackSpeed}
         onchange={savePlaybackSpeed}
       >
@@ -365,27 +332,86 @@
           <option value={speed}>{speed}×</option>
         {/each}
       </select>
-    </label>
-  </section>
+    </SettingsRow>
 
-  <section class="flex flex-col gap-3 px-4 py-3 border-b border-primary">
-    <label class="flex items-center justify-between gap-3 text-sm" for="discordEnabled">
-      <span>Discord Rich Presence</span>
+    <SettingsRow label="Dynamic tab title" for="dynamicTitle">
+      <input
+        id="dynamicTitle"
+        type="checkbox"
+        class={CHECKBOX_CLASS}
+        bind:checked={dynamicTitle}
+        onchange={saveDynamicTitle}
+      />
+    </SettingsRow>
+
+    <SettingsRow label="Filler badges" for="fillerBadges">
+      <input
+        id="fillerBadges"
+        type="checkbox"
+        class={CHECKBOX_CLASS}
+        bind:checked={fillerBadges}
+        onchange={saveFillerBadges}
+      />
+    </SettingsRow>
+
+    <SettingsRow
+      label="Label badges"
+      hint="Reads without relying on color."
+      for="accessibleBadges"
+      nested
+      disabled={!fillerBadges}
+    >
+      <input
+        id="accessibleBadges"
+        type="checkbox"
+        class={CHECKBOX_CLASS}
+        disabled={!fillerBadges}
+        bind:checked={accessibleBadges}
+        onchange={saveAccessibleBadges}
+      />
+    </SettingsRow>
+
+    <SettingsRow label="Anti-spoiler blur" for="antiSpoiler">
+      <input
+        id="antiSpoiler"
+        type="checkbox"
+        class={CHECKBOX_CLASS}
+        bind:checked={antiSpoiler}
+        onchange={saveAntiSpoiler}
+      />
+    </SettingsRow>
+
+    <button
+      class="flex w-full items-center justify-between gap-3 text-sm transition ease-in-out duration-150 hover:text-tint"
+      onclick={() => push("/sites")}
+    >
+      <span>Supported sites</span>
+      <span class="text-secondary">→</span>
+    </button>
+  </SettingsGroup>
+
+  <SettingsGroup title="Discord">
+    <SettingsRow label="Rich Presence" for="discordEnabled" disabled={!signedIn}>
       <input
         id="discordEnabled"
         type="checkbox"
-        class="h-4 w-4 accent-orange-500"
+        class={CHECKBOX_CLASS}
+        disabled={!signedIn}
         bind:checked={discordEnabled}
         onchange={saveDiscordEnabled}
       />
-    </label>
+    </SettingsRow>
 
-    <label class="flex items-center justify-between gap-3 text-sm" for="presenceImage">
-      <span>Presence image</span>
+    <SettingsRow
+      label="Presence image"
+      for="presenceImage"
+      nested
+      disabled={!signedIn || !discordEnabled}
+    >
       <select
         id="presenceImage"
-        class="rounded-md px-2 py-1 text-xs shadow-sm bg-secondary text-primary border border-primary transition ease-in-out duration-150 focus:border-tint focus:ring-2 focus:ring-orange-500 focus:outline-none disabled:opacity-50"
-        disabled={!discordEnabled}
+        class={SELECT_CLASS}
+        disabled={!signedIn || !discordEnabled}
         bind:value={presenceImage}
         onchange={savePresenceImage}
       >
@@ -393,14 +419,18 @@
           <option value={image.value}>{image.label}</option>
         {/each}
       </select>
-    </label>
+    </SettingsRow>
 
-    <label class="flex items-center justify-between gap-3 text-sm" for="activityName">
-      <span>Activity name</span>
+    <SettingsRow
+      label="Activity name"
+      for="activityName"
+      nested
+      disabled={!signedIn || !discordEnabled}
+    >
       <select
         id="activityName"
-        class="rounded-md px-2 py-1 text-xs shadow-sm bg-secondary text-primary border border-primary transition ease-in-out duration-150 focus:border-tint focus:ring-2 focus:ring-orange-500 focus:outline-none disabled:opacity-50"
-        disabled={!discordEnabled}
+        class={SELECT_CLASS}
+        disabled={!signedIn || !discordEnabled}
         bind:value={activityName}
         onchange={saveActivityName}
       >
@@ -408,18 +438,37 @@
           <option value={name.value}>{name.label}</option>
         {/each}
       </select>
-    </label>
-  </section>
+    </SettingsRow>
+  </SettingsGroup>
+
+  <SettingsGroup title="Advanced">
+    <SettingsRow label="Environment" for="apiEnvironment">
+      <select
+        id="apiEnvironment"
+        class={SELECT_CLASS}
+        bind:value={environment}
+        onchange={handleEnvironmentChange}
+      >
+        <option value="v1">Production</option>
+        <option value="local">Local (kurozora.test)</option>
+        <option value="ngrok">ngrok</option>
+      </select>
+    </SettingsRow>
+  </SettingsGroup>
 
   <footer class="px-4 py-3">
-    <Button
-      type="button"
-      variant="secondary"
-      loading={signingOut}
-      disabled={signingOut}
-      onclick={handleSignOut}
-    >
-      Sign out
-    </Button>
+    {#if signedIn}
+      <Button
+        type="button"
+        variant="secondary"
+        loading={signingOut}
+        disabled={signingOut}
+        onclick={handleSignOut}
+      >
+        Sign out
+      </Button>
+    {:else}
+      <Button type="button" onclick={() => push("/signin")}>Sign in</Button>
+    {/if}
   </footer>
 </div>

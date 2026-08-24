@@ -5,6 +5,7 @@ import { pageFor } from '@/lib/scrobble/page-registry';
 import { API_KEY, CLIENT_IDENTIFIER } from '@/lib/config';
 import { loadUpNext, upNextRowsEqual, type UpNextRow } from '@/lib/up-next';
 import { setupContextMenu } from '@/lib/context-menu';
+import { DATE_PAGE, NEW_TAB_STORAGE_KEY, isNewTabURL, loadNewTabEnabled } from '@/lib/new-tab';
 import type { PlaybackState } from '@/lib/scrobble/video-tracker';
 
 export default defineBackground(() => {
@@ -635,6 +636,36 @@ export default defineBackground(() => {
 
   browser.tabs.onRemoved.addListener((tabID) => {
     scrobbleSessions.handleTabClosed(tabID);
+  });
+
+  /**
+   * Whether new tabs open the Date page.
+   */
+  let newTabEnabled = false;
+
+  void loadNewTabEnabled().then((enabled) => {
+    newTabEnabled = enabled;
+  });
+
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[NEW_TAB_STORAGE_KEY] !== undefined) {
+      newTabEnabled = changes[NEW_TAB_STORAGE_KEY].newValue === true;
+    }
+  });
+
+  /**
+   * Opens the Date page in place of a brand-new, empty tab.
+   */
+  browser.tabs.onCreated.addListener((tab) => {
+    if (!newTabEnabled || tab.id === undefined || tab.openerTabId !== undefined) {
+      return;
+    }
+
+    if (!isNewTabURL(tab.pendingUrl ?? tab.url)) {
+      return;
+    }
+
+    browser.tabs.update(tab.id, { url: browser.runtime.getURL(DATE_PAGE) }).catch(() => {});
   });
 
   browser.runtime.onInstalled.addListener(async () => {

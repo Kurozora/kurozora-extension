@@ -7,9 +7,10 @@ import { defineConfig } from 'wxt';
  * the `wss://` Reverb hosts the live-presence WebSocket dials (see the
  * `reverb` config in `kurozora-api.ts`). `'unsafe-inline'` stays in
  * `style-src` because Svelte transitions and component styles can inject
- * inline style attributes at runtime.
+ * inline style attributes at runtime. `blob:` in `img-src` admits locally
+ * cached images.
  */
-const EXTENSION_PAGES_CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://*.kurozora.app https://kurozora.test https://choice-settling-perch.ngrok-free.app wss://*.kurozora.app wss://kurozora.test wss://kurozora.test:* wss://*.ngrok-free.app ws://localhost:* ws://127.0.0.1:*; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; object-src 'self';";
+const EXTENSION_PAGES_CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://*.kurozora.app https://kurozora.test https://choice-settling-perch.ngrok-free.app wss://*.kurozora.app wss://kurozora.test wss://kurozora.test:* wss://*.ngrok-free.app ws://localhost:* ws://127.0.0.1:*; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; object-src 'self';";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -36,7 +37,7 @@ export default defineConfig({
       url: 'https://github.com/kurozora/kurozora-extension',
     },
     homepage_url: 'https://github.com/kurozora/kurozora-extension',
-    permissions: ['activeTab', 'contextMenus', 'storage', 'search'],
+    permissions: ['activeTab', 'contextMenus', 'storage', 'search', 'tabs'],
     // Always the object form: WXT mutates `extension_pages` in dev mode and
     // flattens it to MV2's single string itself at emit time.
     content_security_policy: { extension_pages: EXTENSION_PAGES_CSP },
