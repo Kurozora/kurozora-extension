@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/**
+ * Kurozora palette registered as Tailwind tokens so utilities resolve without
+ * the legacy JS config (which is not loaded under Tailwind v4).
+ */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-orange: #FF9300;
+  --color-orange-400: #FFA933;
+  --color-orange-500: #FF9300;
+  --color-orange-600: #E68400;
+  --color-orange-700: #CC7600;
+}
+
+/**
+ * The website's dark "app-theme" values, applied as the extension's only theme
+ * so its surfaces match kurozora.app's default (dark) appearance.
+ */
+:root {
+  --tint-color: #FF9300;
+  --bg-primary-color: #353A50;
+  --bg-secondary-color: #454F63;
+  --bg-tertiary-color: #667286;
+  --border-color: #AFAFAF26;
+  --primary-text-color: #EEEEEE;
+  --secondary-text-color: #AFAFAF;
+}
+
+/* Semantic theme utilities mirroring the website's app.css. */
+@utility bg-primary {
+  background-color: var(--bg-primary-color);
+}
+@utility bg-secondary {
+  background-color: var(--bg-secondary-color);
+}
+@utility bg-tertiary {
+  background-color: var(--bg-tertiary-color);
+}
+@utility bg-tint {
+  background-color: var(--tint-color);
+}
+@utility text-primary {
+  color: var(--primary-text-color);
+}
+@utility text-secondary {
+  color: var(--secondary-text-color);
+}
+@utility text-tint {
+  color: var(--tint-color);
+}
+@utility border-primary {
+  border-color: var(--border-color);
+}
+@utility border-tint {
+  border-color: var(--tint-color);
+}
+
+body {
+  background-color: var(--bg-primary-color);
+  color: var(--primary-text-color);
+  font-family: var(--font-sans);
+  line-height: 1.375;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  color: #ffffff;
+  background-color: var(--tint-color);
+}
+
+/* Append the external-link glyph to links that open a new tab. */
+[target="_blank"]::after {
+  content: "\0020\2197";
+  white-space: nowrap;
+}
